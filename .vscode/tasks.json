@@ -4,7 +4,7 @@
         {
             "label": "BuildRelease",
             "type": "shell",
-            "command": "./build Debug",
+            "command": "./build.sh Release",
             "problemMatcher": [],
             "group": {
                 "kind": "build",
@@ -14,7 +14,7 @@
         {
             "label": "BuildDebug",
             "type": "shell",
-            "command": "./build Release",
+            "command": "./build.sh Debug",
             "problemMatcher": [],
             "group": {
                 "kind": "build",

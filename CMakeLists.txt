@@ -4,11 +4,12 @@ project(RR2star
     DESCRIPTION "RR2star"
     LANGUAGES CXX)
 
-    
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -RR2STAR_DEBUG")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DRR2STAR_DEBUG")
 
-add_executable(RR2star_exe src/*.cpp)
-target_include_directories(T2_exe PRIVATE ${CMAKE_CURRENT_LIST_DIR}/include)
-target_compile_features(T2_exe PRIVATE cxx_std_17)
-target_compile_options(T2_exe PRIVATE -Wall -Wextra -Wpedantic) #linux only
+add_executable(RR2star_exe 
+    src/main.cpp
+)
+target_include_directories(RR2star_exe PRIVATE ${CMAKE_CURRENT_LIST_DIR}/include)
+target_compile_features(RR2star_exe PRIVATE cxx_std_17)
+target_compile_options(RR2star_exe PRIVATE -Wall -Wextra -Wpedantic) #linux only

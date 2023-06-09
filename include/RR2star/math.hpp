@@ -196,17 +196,4 @@ namespace RR2star
     // returns true if abs(val1 - val2) < CMP_THRES*2
     inline bool approxEq(const float_t &val1, const float_t &val2) { return std::abs(val1 - val2) < CMP_THRES * 2; }
 
-    float_t getPathCost(const std::vector<V2> &path)
-    {
-        assert(path.size() != 1);
-        if (path.empty())
-            return NaN;
-        else
-        {
-            float_t cost = 0;
-            for (size_t i = 1; i < path.size(); ++i)
-                cost += norm(path[i - 1], path[i]);
-            return cost;
-        }
-    }
 }

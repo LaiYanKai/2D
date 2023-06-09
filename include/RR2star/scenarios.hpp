@@ -2,6 +2,7 @@
 #include <ostream>
 #include <vector>
 #include <fstream>
+#include <filesystem>
 #include "math.hpp"
 #include "Vec2.hpp"
 #include "grid.hpp"
@@ -40,18 +41,31 @@ namespace RR2star
     };
     struct Scenarios
     {
-        std::string name = "", filepath_scen = "", filepath_map = "", filepath_results = "";
+        std::filesystem::path fp_dir, fp_name;
+        std::filesystem::path fp_scen, fp_map, fp_results;
         std::vector<Scenario> scens;
-        Scenarios(const std::string &name, const std::string &filepath_scen, const std::string &filepath_map, const std::string &filepath_results)
-            : name(name), filepath_scen(filepath_scen), filepath_map(filepath_map), filepath_results(filepath_results) {}
+        Scenarios(const std::string &dir, const std::string &name)
+            : fp_dir(dir), fp_name(name)
+        {
+            fp_scen = "data";
+            fp_map = "data";
+            fp_results = "results";
+
+            fp_scen = fp_scen / fp_dir / fp_name;
+            fp_scen.replace_extension(".map.scen");
+            fp_map = fp_map / fp_dir / fp_name;
+            fp_scen.replace_extension(".map");
+            fp_results = fp_results / fp_dir / fp_name;
+            fp_scen.replace_extension(".results");
+        }
     };
 
     void getScenarios(Scenarios &scens)
     {
-        assert(scens.name != "");
-        std::ifstream file(scens.filepath_scen);
+        assert(scens.fp_name != "");
+        std::ifstream file(scens.fp_scen);
         if (!file)
-            throw std::runtime_error("getScenarios: Cannot access scenario file '" + scens.filepath_scen + "'");
+            throw std::runtime_error("getScenarios: Cannot access scenario file '" + scens.fp_scen.string() + "'");
 
         // read version
         std::string tmp_s;
@@ -69,9 +83,9 @@ namespace RR2star
     void getMap(Grid &grid, Scenarios &scens)
     {
         // read from Benchmark
-        std::ifstream file(scens.filepath_map);
+        std::ifstream file(scens.fp_map);
         if (!file)
-            throw std::runtime_error("initBenchmark: '" + scens.filepath_map + "' cannot be found!");
+            throw std::runtime_error("initBenchmark: '" + scens.fp_map.string() + "' cannot be found!");
 
         int_t size_x, size_y;
         std::string tmp;
@@ -104,9 +118,9 @@ namespace RR2star
             std::cout << "writeResults: Nothing to write because there are no scenarios" << std::endl;
 
         std::ofstream file;
-        (scens.filepath_scen, std::ios::out | std::ios::binary);
+        (scens.fp_scen, std::ios::out | std::ios::binary);
         if (!file)
-            throw std::runtime_error("writeResults: Cannot write to '" + scens.filepath_results + "'");
+            throw std::runtime_error("writeResults: Cannot write to '" + scens.fp_results.string() + "'");
 
         for (Scenario &scen : scens.scens)
         {
@@ -115,6 +129,6 @@ namespace RR2star
             for (V2 coord : scen.path)
                 file << "\t" << coord[0] << "\t" << coord[1];
         }
-        std::cout << "writeResults: Wrote results to '" << scens.filepath_results << "'";
+        std::cout << "writeResults: Wrote results to '" << scens.fp_results << "'";
     }
 }

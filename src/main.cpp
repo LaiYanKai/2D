@@ -5,10 +5,7 @@
 
 int main(int, char **)
 {
-    const RR2star::Side side = RR2star::Side::L;
-    const RR2star::V2 vec(1,2), vecb(3,4);
-    std::cout << side << std::endl;
-    std::cout << vec + vecb << std::endl;
-
+    RR2star::Scenarios scens("Test", "results");
+    std::cout << scens.fp_dir << scens.fp_map << scens.fp_name << scens.fp_results << scens.fp_scen << std::endl;
     return 0;
 }

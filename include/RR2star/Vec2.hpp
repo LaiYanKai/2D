@@ -1,6 +1,7 @@
 #include <iostream>
 #include <type_traits>
 #include <iomanip>
+#include <vector>
 #include "math.hpp"
 
 #pragma once
@@ -398,4 +399,18 @@ namespace RR2star
     }
 
     inline V2 dirIdxToDir(const dir_idx_t &dir_idx) { return dirIdxToDir<V2>(dir_idx); }
+
+    
+    float_t getPathCost(const std::vector<V2> &path)
+    {
+        assert(path.size() != 1);
+        if (path.empty() == false)
+        {
+            float_t cost = 0;
+            for (size_t i = 1; i < path.size(); ++i)
+                cost += norm(path[i - 1], path[i]);
+            return cost;
+        }
+        return NaN;
+    }
 }

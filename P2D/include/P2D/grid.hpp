@@ -1,11 +1,10 @@
 #include <fstream>
-#include <unordered_set>
-
+#include "types.hpp"
 #include "math.hpp"
 #include "Vec2.hpp"
 
 #pragma once
-namespace RR2star
+namespace P2D
 {
     using mapkey_t = uint32_t;
 
@@ -99,7 +98,7 @@ namespace RR2star
         inline const V2 &getSize() const { return size; }
         void init(const bool *const &data, const V2 &size)
         {
-            assert(data == nullptr);
+            assert(this->data == nullptr);
             assert(size[0] > 0); // x is larger than zero
             assert(size[1] > 0); // y is larger than zero
             const int_t num = size[0] * size[1];
@@ -107,6 +106,8 @@ namespace RR2star
             for (int_t i = 0; i < num; ++i) // copy data
                 this->data[i] = data[i];
             this->size = size;
+
+            initLUT();
         }
         void clear()
         {

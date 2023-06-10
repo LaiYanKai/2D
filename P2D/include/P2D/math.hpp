@@ -1,36 +1,14 @@
 #include <math.h>
-#include <limits>
 #include <stdexcept>
 #include <ostream>
 #include <assert.h>
 #include <sstream>
 #include <iomanip>
+#include "types.hpp"
 
 #pragma once
-namespace RR2star
+namespace P2D
 {
-    // ============================ Side ===========================
-    enum class Side
-    {
-        L = 0,
-        R = 1
-    };
-    inline Side operator!(const Side &side) { return side == Side::L ? Side::R : Side::L; }
-    inline std::ostream &operator<<(std::ostream &out, const Side &side) {
-        (side ==  Side::L) ? out << "L" : out << "R";
-        return out;
-    } 
-
-    using int_t = int;
-    using float_t = double;
-    using long_t = int;
-    using dir_idx_t = signed char;
-    using signed_dir_idx_t = signed char;
-
-    const float_t INF = std::numeric_limits<float_t>::infinity();
-    const float_t NaN = std::numeric_limits<float_t>::quiet_NaN();
-    const float_t CMP_THRES = 1e-8;
-
     template <typename T>
     inline T sgn(T value) { return (T(0) < value) - (value < T(0)); }
 
@@ -189,11 +167,11 @@ namespace RR2star
         return ss.str();
     }
 
-    // returns true if val1 + CMP_THRES is gt val2
-    inline bool approxGt(const float_t &val1, const float_t &val2) { return val1 - CMP_THRES > val2; }
-    // returns true if val1 - CMP_THRES is gt val2
-    inline bool approxGe(const float_t &val1, const float_t &val2) { return val1 + CMP_THRES > val2; }
-    // returns true if abs(val1 - val2) < CMP_THRES*2
-    inline bool approxEq(const float_t &val1, const float_t &val2) { return std::abs(val1 - val2) < CMP_THRES * 2; }
+    // returns true if val1 + THRES is gt val2
+    inline bool approxGt(const float_t &val1, const float_t &val2) { return val1 - THRES > val2; }
+    // returns true if val1 - THRES is gt val2
+    inline bool approxGe(const float_t &val1, const float_t &val2) { return val1 + THRES > val2; }
+    // returns true if abs(val1 - val2) < THRES*2
+    inline bool approxEq(const float_t &val1, const float_t &val2) { return std::abs(val1 - val2) < THRES * 2; }
 
 }

@@ -2,13 +2,12 @@
 #include <type_traits>
 #include <iomanip>
 #include <vector>
+#include "types.hpp"
 #include "math.hpp"
 
 #pragma once
 
-// #define INFTY std::numeric_limits<float>::infinity()
-
-namespace RR2star
+namespace P2D
 {
     template <typename T>
     class Vec2
@@ -305,7 +304,7 @@ namespace RR2star
     using V2f = Vec2<float_t>; // in P2D/math.hpp
 
     template <typename T>
-    bool approxEqual(const Vec2<T> &lhs, const Vec2<T> &rhs, const T &thres = CMP_THRES)
+    bool approxEqual(const Vec2<T> &lhs, const Vec2<T> &rhs, const T &thres = THRES)
     {
         bool res = true;
         for (size_t dim = 0; dim < 2; ++dim)
@@ -330,7 +329,7 @@ namespace RR2star
         return res;
     }
     template <typename T>
-    Vec2<T> isWhole(const Vec2<T> &vec, const T &thres = CMP_THRES)
+    Vec2<T> isWhole(const Vec2<T> &vec, const T &thres = THRES)
     {
         Vec2<T> res;
         for (size_t dim = 0; dim < 2; ++dim)
@@ -400,17 +399,18 @@ namespace RR2star
 
     inline V2 dirIdxToDir(const dir_idx_t &dir_idx) { return dirIdxToDir<V2>(dir_idx); }
 
-    
-    float_t getPathCost(const std::vector<V2> &path)
+    template <typename T, typename U>
+    U norm(const std::vector<Vec2<T>> &path)
     {
-        assert(path.size() != 1);
-        if (path.empty() == false)
-        {
-            float_t cost = 0;
-            for (size_t i = 1; i < path.size(); ++i)
-                cost += norm(path[i - 1], path[i]);
-            return cost;
-        }
-        return NaN;
+        if (path.size() <= 1)
+            return NAN;
+
+        U cost = 0;
+        for (auto coord = path.begin() + 1; coord != path.end(); ++coord)
+            cost += norm<T, U>(*(coord - 1), *coord);
+        return cost;
     }
+
+    template <typename T>
+    float_t norm(const std::vector<Vec2<T>> &path) { return norm<float_t, T>(path); }
 }

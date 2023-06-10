@@ -5,4 +5,5 @@
 
 #include "grid.hpp"
 #include "list.hpp"
+#include "openlist.hpp"
 #include "scenarios.hpp"

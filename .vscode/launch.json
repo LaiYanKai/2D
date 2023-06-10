@@ -1,6 +1,6 @@
 {
     "configurations": [
-        { "name": "Debug", "type": "cppdbg", "request": "launch", "cwd": "${workspaceRoot}", "program": "${workspaceRoot}/build/Debug/RR2star_exe", "preLaunchTask": "BuildDebug", "setupCommands": [{ "description": "Enable pretty-printing for gdb","text": "-enable-pretty-printing","ignoreFailures": true} ]},
-        // { "name": "Release", "type": "cppdbg", "request": "launch", "cwd": "${workspaceRoot}", "program": "${workspaceRoot}/build/Release/RR2star_exe", "preLaunchTask": "BuildRelease"},
+        { "name": "DebugVG2", "type": "cppdbg", "request": "launch", "cwd": "${workspaceRoot}", "program": "${workspaceRoot}/build/Debug/VG2/VG2_exe", "preLaunchTask": "BuildDebug", "setupCommands": [{ "description": "Enable pretty-printing for gdb","text": "-enable-pretty-printing","ignoreFailures": true} ]},
+        // { "name": "ReleaseVG2", "type": "cppdbg", "request": "launch", "cwd": "${workspaceRoot}", "program": "${workspaceRoot}/build/Release/VG2/VG2_exe", "preLaunchTask": "BuildRelease"},
     ]
 }

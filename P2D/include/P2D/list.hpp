@@ -4,8 +4,9 @@
 #pragma once
 namespace P2D
 {
-
-    template <typename T> // T must have pointers "next" and "prev" that points to other T elements in the list. Both should be initialised to nullptr
+    // doubly linked list  owning all T* objects
+    // T must have pointers "next" and "prev" that points to other T elements in the list. Both should be initialised to nullptr
+    template <typename T>
     class AbstractList
     {
     private:

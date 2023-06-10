@@ -8,8 +8,23 @@ int main(int, char **)
     for (const P2D::Scenarios & scens : expt)
         P2D::writeResults(scens);
 
+    P2D::VG2::Corner crn(1, {3,4});
 
-    _dbg11("hi");
+    P2D::VG2::Nodes nodes;
+    P2D::VG2::Node * node = nodes.emplace(&crn, nullptr, 1, 9);
+    P2D::VG2::Node * node2 = nodes.emplace(&crn, nullptr, 1, 30);
+    P2D::VG2::Node * node3 = nodes.emplace(&crn, nullptr, 1, 1);
+    P2D::VG2::Node * node4 = nodes.emplace(&crn, nullptr, 1, 3);
+
+
+    P2D::OpenList<P2D::VG2::Node> ol;
+    ol.queue(node);
+    ol.queue(node2);
+    ol.queue(node3);
+    ol.queue(node4);
+
+
+    _dbghelp;
 
     // bool build_map_only = false;
     // constexpr bool block = true;

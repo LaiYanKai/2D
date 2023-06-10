@@ -1,9 +1,62 @@
+#include <unordered_map>
+#include <filesystem>
+
 #include "P2D/P2D.hpp"
 #include "node.hpp"
 
 #pragma once
 namespace P2D::VG2
 {
+    template <bool diag_block = true>
+    class VG2
+    {
+    private:
+        std::unordered_map<mapkey_t, Corner> crns;
+        Nodes nodes;
+        Grid *const grid;
+        OpenList<Node> open_list;
+
+        std::vector<mapkey_t> _setupFindCorners()
+        {
+            std::vector<mapkey_t> keys;
+            if constexpr (diag_block)
+            {
+                mapkey_t k = grid->coordToKey(1,1);
+            }
+            else
+            {
+            }
+        }
+
+        // opens the vg file at fp_vg and loads the vg, otherwise, builds the vg and write to vg file at fp_vg
+        void setup(std::filesystem::path &fp_vg)
+        {
+            if (std::filesystem::exists(fp_vg))
+            { // load the vg
+              //  ========= Load from File ================
+            }
+            else
+            { // build the vg and write into file
+
+                //  ========= Write to File ================
+                std::filesystem::create_directory(fp_vg.parent_path()); // create directory if it doesn't exist
+
+                std::ofstream file(fp_vg, std::ios::out | std::ios::binary);
+                if (!file)
+                    throw std::runtime_error("VG2::setup: Cannot write to '" + fp_vg.string() + "'");
+            }
+        }
+
+    public:
+        VG2(Grid *const &grid, std::filesystem::path &fp_vg) : grid(grid) { setup(fp_vg); }
+        VG2 &operator=(const VG2 &) = delete; // Disallow copying
+        VG2(const VG2 &) = delete;
+        ~VG2() {}
+
+        std::vector<V2> run()
+        {
+        }
+    };
     // template <bool block = false>
     // class VG2
     // {

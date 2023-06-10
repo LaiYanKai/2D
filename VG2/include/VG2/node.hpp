@@ -1,66 +1,30 @@
+#include <forward_list>
 #include "P2D/P2D.hpp"
 
 #pragma once
 namespace P2D::VG2
 {
-    // struct Corner
-    // {
-    //     mapkey_t key;
-    //     V2 coord;
-    //     std::vector<Corner *> neighbors;
-    //     Corner(mapkey_t key, V2 coord) : key(key), coord(coord), neighbors(){};
-    // };
-    // struct Node
-    // {
-    //     bool visited;
-    //     float_t f, g, h;
-    //     Corner *crn;
-    //     Node *parent, *next, *prev;
-    //     Node(Corner *crn, float_t h, std::list<Node *>::iterator open_) : visited(false), f(h), g(INF), h(h), crn(crn), parent(nullptr), open_(open_) {}
-    // };
-    // class OpenList
-    // {
-    // private:
-    //     std::list<Node *> pq;
+    struct Corner
+    {
+        mapkey_t key = 0;
+        V2 coord = {0, 0};
+        std::vector<Corner *> neighbors;
+        Corner(const mapkey_t &key, const V2 &coord) : key(key), coord(coord), neighbors(){};
+    };
 
-    // public:
-    //     void push(Node *node);
-    //     bool empty();
-    //     Node *poll();
-    //     void erase(std::list<Node *>::iterator open_);
-    //     std::list<Node *>::iterator end();
-    // };
+    struct Node
+    {
+        Corner *const crn = nullptr;
+        Node *parent = nullptr, *openlist_next = nullptr, *openlist_prev = nullptr;
+        float_t f = INF, g = INF, h = INF;
+        Node(Corner *const &crn, Node *const &parent, const float_t &g, const float_t &h) : crn(crn), parent(parent), f(g + h), g(g), h(h) {}
+    };
 
-    // void OpenList::push(Node *new_node)
-    // {
-    //     for (auto node_ = pq.begin(); node_ != pq.end(); ++node_)
-    //     {
-    //         if (new_node->f < (*node_)->f)
-    //         {
-    //             new_node->open_ = pq.emplace(node_, new_node);
-    //             return;
-    //         }
-    //     }
-    //     pq.emplace_back(new_node);
-    //     new_node->open_ = std::prev(end());
-    // }
-    // bool OpenList::empty()
-    // {
-    //     return pq.empty();
-    // }
-    // Node *OpenList::poll()
-    // {
-    //     Node *node = pq.front();
-    //     pq.pop_front();
-    //     node->open_ = end();
-    //     return node;
-    // }
-    // void OpenList::erase(std::list<Node *>::iterator open_)
-    // {
-    //     pq.erase(open_);
-    // }
-    // std::list<Node *>::iterator OpenList::end()
-    // {
-    //     return pq.end();
-    // }
+    class Nodes
+    {
+    private:
+        std::forward_list<Node> _data;
+    public:
+        inline Node *emplace(Corner *const &crn, Node *const &parent, const float_t &g, const float_t &h) { return &(_data.emplace_front(crn, parent, g, h)); } 
+    };
 }

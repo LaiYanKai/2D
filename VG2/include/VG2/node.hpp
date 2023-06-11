@@ -24,7 +24,10 @@ namespace P2D::VG2
     {
     private:
         std::forward_list<Node> _data;
+
     public:
-        inline Node *emplace(Corner *const &crn, Node *const &parent, const float_t &g, const float_t &h) { return &(_data.emplace_front(crn, parent, g, h)); } 
+        inline Node *emplace(Corner *const &crn, Node *const &parent, const float_t &g, const float_t &h) { return &(_data.emplace_front(crn, parent, g, h)); }
+        inline void clear() { _data.clear(); }
+        inline bool empty() const { return _data.empty(); }
     };
 }

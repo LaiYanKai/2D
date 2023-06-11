@@ -16,6 +16,7 @@ namespace P2D
     using long_t = int;
     using dir_idx_t = signed char;
     using signed_dir_idx_t = signed char;
+    using mapkey_t = int32_t;
     const float_t INF = std::numeric_limits<float_t>::infinity();
     const float_t THRES = 1e-8;
 

@@ -3,6 +3,7 @@
 
 #include "P2D/P2D.hpp"
 #include "node.hpp"
+#include "los.hpp"
 
 #pragma once
 namespace P2D::VG2
@@ -15,28 +16,93 @@ namespace P2D::VG2
         Nodes nodes;
         Grid *const grid;
         OpenList<Node> open_list;
+        Los<diag_block> los;
 
+        // finds convex corners from the map and returns vertex keys of the convex corners
         std::vector<mapkey_t> _setupFindCorners()
         {
-            std::vector<mapkey_t> keys;
-            if constexpr (diag_block)
+            assert(grid != nullptr);
+
+            std::vector<mapkey_t> crn_keys;
+            mapkey_t kv = grid->coordToKey<false>(1, 1);
+            mapkey_t rkv_x = grid->getRelKey<false>(0);
+            mapkey_t rkv_y = grid->getRelKey<false>(2);
+            mapkey_t rkc_x = grid->getRelKey<true>(0);
+
+            int_t max_vx = grid->getBoundary<false>(0) - 2;
+            int_t max_vy = grid->getBoundary<false>(2) - 2;
+            for (int_t vx = 1; vx <= max_vx; ++vx)
             {
-                mapkey_t k = grid->coordToKey(1,1);
+                // fill window for back left and back right
+                mapkey_t kc_l = grid->addKeyToRelKey(kv, grid->getCellRelKey(3, vx));
+                mapkey_t kc_r = grid->addKeyToRelKey(kv, grid->getCellRelKey(5, vx));
+                char window = (grid->isOc(kc_l) << 1) | (grid->isOc(kc_r));
+
+                for (int_t vy = 1; vy <= max_vy; ++vy)
+                {
+                    // shift window left and filter
+                    window <<= 2;
+                    window &= 0b1111; // in format bl,br,fl,fr
+
+                    // fill window for front left nad front right
+                    kc_l = grid->addKeyToRelKey(kc_l, rkc_x);
+                    kc_r = grid->addKeyToRelKey(kc_r, rkc_x);
+                    window |= (grid->isOc(kc_l) << 1) | grid->isOc(kc_r);
+
+                    // identigy convex corner at current vertex location
+                    switch (window)
+                    {
+                    case 0b1000:
+                    case 0b0100:
+                    case 0b0010:
+                    case 0b0001:
+                        crn_keys.push_back(kv);
+                        break;
+                    case 0b1001:
+                    case 0b0110:
+                        if constexpr (diag_block == false)
+                            crn_keys.push_back(kv);
+                        break;
+                    default:
+                        break;
+                    }
+
+                    // update vertex key by moving to next y
+                    kv = grid->addKeyToRelKey(kv, rkv_y);
+                }
+                // update vertex key by moving to next x
+                kv = grid->addKeyToRelKey(kv, rkv_x);
             }
-            else
+
+            return crn_keys;
+        }
+
+        std::vector<std::vector<mapkey_t>> _setupFindCombinations(std::vector<mapkey_t> &crn_keys)
+        {
+            for (auto crn_key_a = crn_keys.begin(); crn_key_a != crn_keys.end(); ++crn_key_a)
             {
+                for (auto crn_key_b = crn_key_a + 1; crn_key_b != crn_keys.end(); ++crn_key_b)
+                {
+                    // test the combinations
+
+                }
             }
         }
 
         // opens the vg file at fp_vg and loads the vg, otherwise, builds the vg and write to vg file at fp_vg
         void setup(std::filesystem::path &fp_vg)
         {
+            assert(nodes.empty() == true);
+
             if (std::filesystem::exists(fp_vg))
             { // load the vg
               //  ========= Load from File ================
             }
             else
             { // build the vg and write into file
+
+                // ========= find corners =================
+                std::vector<mapkey_t> crn_keys = _setupFindCorners();
 
                 //  ========= Write to File ================
                 std::filesystem::create_directory(fp_vg.parent_path()); // create directory if it doesn't exist
@@ -48,7 +114,7 @@ namespace P2D::VG2
         }
 
     public:
-        VG2(Grid *const &grid, std::filesystem::path &fp_vg) : grid(grid) { setup(fp_vg); }
+        VG2(Grid *const &grid, std::filesystem::path &fp_vg) : grid(grid), los(grid) { setup(fp_vg); }
         VG2 &operator=(const VG2 &) = delete; // Disallow copying
         VG2(const VG2 &) = delete;
         ~VG2() {}

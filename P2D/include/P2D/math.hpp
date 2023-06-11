@@ -9,6 +9,10 @@
 #pragma once
 namespace P2D
 {
+    bool inRange(const dir_idx_t &dir_idx) { return dir_idx >= 0 && dir_idx <= 7; }
+    bool isOrdinal(const dir_idx_t &dir_idx) { return (dir_idx & 1) == 1; }
+    bool isCardinal(const dir_idx_t &dir_idx) { return (dir_idx & 1) == 0; }
+
     template <typename T>
     inline T sgn(T value) { return (T(0) < value) - (value < T(0)); }
 
@@ -21,7 +25,7 @@ namespace P2D
     }
 
     template <typename T>
-    T dirToDirIdx(const T &dir_x, const T &dir_y)
+    dir_idx_t dirToDirIdx(const T &dir_x, const T &dir_y)
     {
         assert(dir_x != 0 || dir_y != 0);
         if (dir_x > 0)
@@ -47,8 +51,7 @@ namespace P2D
         else
             return 8;
     }
-    template <class T>
-    dir_idx_t dirToDirIdx(const T &dir) { return dirToDirIdx(dir[0], dir[1]); }
+    dir_idx_t dirToDirIdx(const V2 &dir) { return dirToDirIdx(dir.x, dir.y); }
 
     template <typename T>
     void dirIdxToDir(const dir_idx_t &dir_idx, T &sgn_dir_x, T &sgn_dir_y)

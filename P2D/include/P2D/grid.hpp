@@ -185,16 +185,13 @@ namespace P2D
             return rel_key_cell;
         }
 
-        inline constexpr mapkey_t get
+        inline constexpr mapkey_t getRelCoordCFV(const dir_idx_t &dir_idx, const int_t &vert_x, const int_t & vert_y) 
+        {   // inline constexpr doesnt make a difference. //inline to put the function in header file explicitly
 
-        // return the relative coordinates for an adjacent cell from a vertex, in direction dir_idx
-        // NOT DEFINED FOR CARDINAL dir_idx (even: 0, 2, 4, 6)
-        inline const V2 &getAdjRelCoordCFV(const dir_idx_t &dir_idx) const { return ADJ_CELL_FROM_VERTEX[dir_idx].rel_coord; }
 
-        // return the relative mapkey for an adjacent cell from a vertex, in direction dir_idx
-        // NOT DEFINED FOR CARDINAL dir_idx (even: 0, 2, 4, 6)
-        inline const mapkey_t &getAdjRelKeyCFV(const dir_idx_t &dir_idx) const { return ADJ_CELL_FROM_VERTEX[dir_idx].rel_key; }
+        }
 
+        
         template <bool is_cell>
         inline const int_t &getBoundary(const dir_idx_t &dir_idx) const
         {

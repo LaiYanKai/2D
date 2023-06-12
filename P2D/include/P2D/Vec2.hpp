@@ -413,5 +413,5 @@ namespace P2D
     }
 
     template <typename T>
-    float_t norm(const std::vector<Vec2<T>> &path) { return norm<float_t, T>(path); }
+    float_t norm(const std::vector<Vec2<T>> &path) { return norm<T, float_t>(path); }
 }

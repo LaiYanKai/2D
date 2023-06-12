@@ -133,9 +133,9 @@ namespace P2D
             mapkey_t kc_r = grid->addKeyToRelKey(ki, grid->getCellRelKey(addDirIdx(di, 5), pi.x));
             mapkey_t rkc = grid->getRelKey<true>(di);
 
-            const bool out_of_map_left = grid->inMap<false>(pi + grid->getRelCoord<false>(addDirIdx(di, 2)));
-            const bool out_of_map_right = grid->inMap<false>(pi + grid->getRelCoord<false>(addDirIdx(di, 6)));
-            const bool out_of_map_back = grid->inMap<false>(pi + grid->getRelCoord<false>(addDirIdx(di, 4)));
+            const bool out_of_map_left = !grid->inMap<false>(pi + grid->getRelCoord<false>(addDirIdx(di, 2)));
+            const bool out_of_map_right =!grid->inMap<false>(pi + grid->getRelCoord<false>(addDirIdx(di, 6)));
+            const bool out_of_map_back = !grid->inMap<false>(pi + grid->getRelCoord<false>(addDirIdx(di, 4)));
 
             bool is_blocked_left = false;
             bool is_blocked_right = false;

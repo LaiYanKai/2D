@@ -202,7 +202,7 @@ namespace P2D
         }
 
         template <bool is_cell>
-        inline const int_t getBoundary(const dir_idx_t &dir_idx) const
+        inline int_t getBoundary(const dir_idx_t &dir_idx) const
         {
             assert(inRange(dir_idx) == true);
             const V2 &size = is_cell ? size_cell : size_vert;

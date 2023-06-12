@@ -16,7 +16,7 @@ namespace P2D
     {
         V2 start = V2(0, 0), goal = V2(0, 0);
         float_t cost = NAN, nanosec = NAN;
-        std::vector<V2> path;
+        std::vector<V2> path = {};
         Scenario(const int_t &start_x, const int_t &start_y, const int_t &goal_x, const int_t &goal_y) : start(start_x, start_y), goal(goal_x, goal_y) {}
 
         std::string repr(const int type = 0) const
@@ -31,18 +31,20 @@ namespace P2D
             ss << std::setw(7) << this->cost;
             ss << " ) size( ";
             ss << std::setw(3) << this->path.size();
-            ss << ") elapsed( ";
-            ss << this->nanosec;
-            ss << " us )";
+            ss << " ) elapsed( ";
+            ss << std::setprecision(0) << this->nanosec;
+            ss << " ns )";
 
             if (type != 0)
-                ss << " Path( ";
-            for (const V2 &coord : this->path)
             {
-                ss << coord;
-                ss << "; ";
+                ss << " Path( ";
+                for (const V2 &coord : this->path)
+                {
+                    ss << coord;
+                    ss << "; ";
+                }
+                ss << " )";
             }
-            ss << " )";
 
             return ss.str();
         }
@@ -56,7 +58,7 @@ namespace P2D
     {
         std::filesystem::path fp_dir, fp_name, fp_alg;
         std::filesystem::path fp_scen, fp_map, fp_results;
-        std::vector<Scenario> scens;
+        std::vector<Scenario> scens = {};
         Scenarios(const std::string &dir, const std::string &name, const std::string &alg)
             : fp_dir(dir), fp_name(name), fp_alg(alg)
         {
@@ -139,7 +141,7 @@ namespace P2D
         for (const Scenario &scen : scens.scens)
         {
             // scen.start, scen.goal, scen.path, scen.nanosec, scen.cost
-            file << std::fixed << std::setprecision(3) << scen.nanosec;
+            file << std::fixed << std::setprecision(0) << scen.nanosec;
             for (V2 coord : scen.path)
                 file << "\t" << coord[0] << "\t" << coord[1];
             file << std::endl;
@@ -177,21 +179,23 @@ namespace P2D
 
     // 0 for all, 1 for first scen, 2 for 2nd scen etc.
     template <class T>
-    void run(T *const &alg, Scenarios &scens, const size_t &scen_num)
+    void run(T *const &alg, Scenarios &scens, size_t scen_num)
     {
         if (scen_num > scens.scens.size())
             throw std::runtime_error("run: scen_num (" + std::to_string(scen_num) + ") is larger than number of scenarios (" + std::to_string(scens.scens.size()) + ")");
 
         size_t scen_end = scen_num == 0 ? scens.scens.size() : scen_num;
+        if (scen_num > 0)
+            --scen_num;
+
         std::cout << "=== runScenarios: " << scens.fp_name.string() << " ===" << std::endl;
 
         auto time_zero = std::chrono::high_resolution_clock::now();
         float_t avg_nanosec = 0;
 
-        unsigned int num_finished = 0;
-        for (size_t i = scen_num; i <= scen_end; ++i)
+        for (; scen_num < scen_end; ++scen_num)
         {
-            Scenario &scen = scens.scens[i - 1];
+            Scenario &scen = scens.scens[scen_num];
             auto time_start = std::chrono::high_resolution_clock::now();
             scen.path = alg->run(scen.start, scen.goal);
             auto time_end = std::chrono::high_resolution_clock::now();
@@ -210,17 +214,16 @@ namespace P2D
             // feedback
             std::cout << scens.fp_name.string();
             std::cout << std::fixed;
-            std::cout << " [";
-            std::cout << std::setw(5) << ++num_finished;
-            std::cout << "/";
+            std::cout << " [ ";
+            std::cout << std::setw(5) << scen_num + 1;
+            std::cout << " / ";
             std::cout << std::setw(5) << scens.scens.size();
-            std::cout << "]: ( ";
+            std::cout << " ]: ( ";
             std::cout << std::setw(7) << dur_total.count();
-            std::cout << " min )    ";
+            std::cout << " min ) ";
+            std::cout << scen;
             if (scen.path.empty())
-                std::cout << "Not solvable";
-            else
-                std::cout << scen;
+                std::cout << " --- Not solvable";
             std::cout << std::endl;
         }
     }

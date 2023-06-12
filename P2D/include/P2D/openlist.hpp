@@ -73,7 +73,7 @@ namespace P2D
 
             T *ele_prev = nullptr;
             T *ele_next = this->_front;
-            while (ele_next != nullptr && ele->f + THRES > ele_next->f) // ele->f >= ele_next->f
+            while (ele_next != nullptr && approxGe(ele->f, ele_next->f) == true) // ele->f >= ele_next->f
             {
                 ele_prev = ele_next;
                 ele_next = ele_next->openlist_next;

@@ -1,11 +1,13 @@
 #include <unordered_map>
 #include <filesystem>
+#include <fstream>
 
 #include "P2D/P2D.hpp"
 #include "node.hpp"
-#include "los.hpp"
 
 #pragma once
+#define FILE_DELIMITER -1
+#define FILE_SZ sizeof(mapkey_t)
 namespace P2D::VG2
 {
     template <bool diag_block = true>
@@ -24,18 +26,20 @@ namespace P2D::VG2
             assert(grid != nullptr);
 
             std::vector<mapkey_t> crn_keys;
-            mapkey_t kv = grid->coordToKey<false>(1, 1);
-            mapkey_t rkv_x = grid->getRelKey<false>(0);
-            mapkey_t rkv_y = grid->getRelKey<false>(2);
-            mapkey_t rkc_x = grid->getRelKey<true>(0);
+            const mapkey_t rkv_y = grid->getRelKey<false>(2);
+            const mapkey_t rkc_y = grid->getRelKey<true>(2);
 
             int_t max_vx = grid->getBoundary<false>(0) - 2;
             int_t max_vy = grid->getBoundary<false>(2) - 2;
+            std::cout << "Finding Corners..." << std::flush;
             for (int_t vx = 1; vx <= max_vx; ++vx)
             {
+                std::cout << "\rFinding Corners... " << vx << "/" << max_vx << " rows (height) of x vertices" << std::flush;
+                mapkey_t kv = grid->coordToKey<false>(vx, 1);
+
                 // fill window for back left and back right
-                mapkey_t kc_l = grid->addKeyToRelKey(kv, grid->getCellRelKey(3, vx));
-                mapkey_t kc_r = grid->addKeyToRelKey(kv, grid->getCellRelKey(5, vx));
+                mapkey_t kc_l = grid->addKeyToRelKey(kv, grid->getCellRelKey(5, vx));
+                mapkey_t kc_r = grid->addKeyToRelKey(kv, grid->getCellRelKey(7, vx));
                 char window = (grid->isOc(kc_l) << 1) | (grid->isOc(kc_r));
 
                 for (int_t vy = 1; vy <= max_vy; ++vy)
@@ -45,23 +49,27 @@ namespace P2D::VG2
                     window &= 0b1111; // in format bl,br,fl,fr
 
                     // fill window for front left nad front right
-                    kc_l = grid->addKeyToRelKey(kc_l, rkc_x);
-                    kc_r = grid->addKeyToRelKey(kc_r, rkc_x);
+                    kc_l = grid->addKeyToRelKey(kc_l, rkc_y);
+                    kc_r = grid->addKeyToRelKey(kc_r, rkc_y);
                     window |= (grid->isOc(kc_l) << 1) | grid->isOc(kc_r);
 
-                    // identigy convex corner at current vertex location
+                    // identify convex corner at current vertex location
                     switch (window)
                     {
                     case 0b1000:
                     case 0b0100:
                     case 0b0010:
                     case 0b0001:
+                        // std::cout << vx << "," << vy << "; " << std::flush;
                         crn_keys.push_back(kv);
                         break;
                     case 0b1001:
                     case 0b0110:
                         if constexpr (diag_block == false)
+                        {
+                            // std::cout << vx << "," << vy << "; " << std::flush;
                             crn_keys.push_back(kv);
+                        }
                         break;
                     default:
                         break;
@@ -70,33 +78,133 @@ namespace P2D::VG2
                     // update vertex key by moving to next y
                     kv = grid->addKeyToRelKey(kv, rkv_y);
                 }
-                // update vertex key by moving to next x
-                kv = grid->addKeyToRelKey(kv, rkv_x);
             }
 
+            std::cout << std::endl;
             return crn_keys;
         }
 
         std::vector<std::vector<mapkey_t>> _setupFindCombinations(std::vector<mapkey_t> &crn_keys)
         {
-            for (auto crn_key_a = crn_keys.begin(); crn_key_a != crn_keys.end(); ++crn_key_a)
+            size_t i = 0, num_combinations = 0;
+            std::vector<std::vector<mapkey_t>> combinations;
+            std::cout << "Testing LOS..." << std::flush;
+            for (auto key_a_ = crn_keys.begin(); key_a_ != crn_keys.end(); ++key_a_)
             {
-                for (auto crn_key_b = crn_key_a + 1; crn_key_b != crn_keys.end(); ++crn_key_b)
-                {
-                    // test the combinations
+                std::cout << "\rTesting LOS... " << ++i << "/" << crn_keys.size()  << " corners" << std::flush;
 
+                const V2 crn_coord_a = grid->keyToCoord<false>(*key_a_);
+                std::vector<mapkey_t> keys_visible;
+                for (auto key_b_ = key_a_ + 1; key_b_ != crn_keys.end(); ++key_b_)
+                { // test the pair
+                    const V2 crn_coord_b = grid->keyToCoord<false>(*key_b_);
+                    if (los.template cast<false>(*key_a_, crn_coord_a, *key_b_, crn_coord_b))
+                    { // visible
+                        keys_visible.push_back(*key_b_);
+                        ++num_combinations;
+                    }
+                }
+
+                if (keys_visible.empty() == false)
+                {
+                    keys_visible.push_back(*key_a_);
+                    combinations.emplace_back(std::move(keys_visible));
                 }
             }
+            std::cout << std::endl;
+            std::cout << "There were " << num_combinations << " combinations (pairs of corners, w/o repeat)" << std::endl;
+            return combinations;
+        }
+
+        void _setupWriteCombinations(const std::filesystem::path fp_vg, const std::vector<std::vector<mapkey_t>> &combinations)
+        {
+            std::filesystem::create_directories(fp_vg.parent_path()); // create directory if it doesn't exist
+
+            std::ofstream file(fp_vg, std::ios::out | std::ios::binary);
+            if (!file)
+                throw std::runtime_error("writeCombinations: Cannot write to '" + fp_vg.string() + "'");
+
+            // ======= Write map size =============
+            const V2 &size_vert = grid->getSize<true>();
+            const mapkey_t size_vert_x = size_vert.x;
+            const mapkey_t size_vert_y = size_vert.y;
+            file.write((char *)&size_vert_x, FILE_SZ);
+            file.write((char *)&size_vert_y, FILE_SZ);
+
+            // ======= Write combinations ===========
+            for (const std::vector<mapkey_t> &combination : combinations)
+            {
+                for (const mapkey_t &key : combination)
+                    file.write((char *)&key, FILE_SZ);
+                mapkey_t delim = FILE_DELIMITER;
+                file.write((char *)&delim, FILE_SZ);
+            }
+
+            file.close();
+            std::cout << "writeCombinations: Wrote results to '" << fp_vg << "'" << std::endl;
+        }
+
+        std::vector<std::vector<mapkey_t>> _setupReadCombinations(const std::filesystem::path fp_vg)
+        {
+            std::cout << "readCombinations: Reading .vg file from '" << fp_vg.string() << "'... " << std::endl;
+
+            std::ifstream file(fp_vg, std::ios::ate | std::ios::binary);
+            if (!file)
+                throw std::runtime_error("readCombinations: Cannot read '" + fp_vg.string() + "'");
+
+            // ======= read map size and validate =============
+            mapkey_t size_vert_x, size_vert_y;
+            file.read((char *)&size_vert_x, FILE_SZ);
+            file.read((char *)&size_vert_y, FILE_SZ);
+            if (grid->getSize<false>() != V2(size_vert_x, size_vert_y))
+                throw std::out_of_range("readCombinations: Read size (" + V2(size_vert_x, size_vert_y).repr() + ") is different from grid size(" + grid->getSize<false>().repr() + ")");
+
+            auto file_size = file.tellg();
+            file.seekg(0);
+
+            // ======= Read combinations ===========
+            size_t num_combinations = 0;
+            std::vector<std::vector<mapkey_t>> combinations;
+            while (file.tellg() < file_size)
+            {
+                std::vector<mapkey_t> combination;
+                // read key
+                while (true)
+                {
+                    mapkey_t key;
+                    file.read((char *)&key, FILE_SZ);
+                    if (key == FILE_DELIMITER)
+                        break;
+                    else if (file.tellg() >= file_size)
+                        throw std::out_of_range("readCombinations: File did not end properly. Corrupted or wrong file.");
+                    combination.push_back(key);
+                    ++num_combinations;
+                }
+
+                if (combination.empty() == false)
+                    combinations.push_back(std::move(combination));
+
+                std::cout << "\rreadCombinations: " << file.tellg() << " / " << file_size << " bytes" << std::flush;
+            }
+
+            std::cout << "There were " << num_combinations << " combinations (pairs of corners, w/o repeat)" << std::endl;
+
+            file.close();
+            return combinations;
         }
 
         // opens the vg file at fp_vg and loads the vg, otherwise, builds the vg and write to vg file at fp_vg
-        void setup(std::filesystem::path &fp_vg)
+        void setup(const std::filesystem::path fp_vg)
         {
+            crns.clear();
             assert(nodes.empty() == true);
+            assert(open_list.empty() == true);
 
+            std::vector<std::vector<mapkey_t>> combinations;
             if (std::filesystem::exists(fp_vg))
             { // load the vg
-              //  ========= Load from File ================
+                //  ========= Load from File ================
+                combinations = _setupReadCombinations(fp_vg);
             }
             else
             { // build the vg and write into file
@@ -104,17 +212,32 @@ namespace P2D::VG2
                 // ========= find corners =================
                 std::vector<mapkey_t> crn_keys = _setupFindCorners();
 
-                //  ========= Write to File ================
-                std::filesystem::create_directory(fp_vg.parent_path()); // create directory if it doesn't exist
+                // ========= find combinations ============
+                combinations = _setupFindCombinations(crn_keys);
 
-                std::ofstream file(fp_vg, std::ios::out | std::ios::binary);
-                if (!file)
-                    throw std::runtime_error("VG2::setup: Cannot write to '" + fp_vg.string() + "'");
+                //  ========= Write combinations to File ================
+                _setupWriteCombinations(fp_vg, combinations);
+            }
+
+            // convert combinations into unordered map
+            for (const std::vector<mapkey_t> &combination : combinations)
+            {
+                const mapkey_t &crn_key_a = combination.back();
+                const V2 crn_coord_a = grid->keyToCoord<false>(crn_key_a);
+                Corner *const &crn_a = &(crns.try_emplace(crn_key_a, crn_key_a, crn_coord_a).first->second);
+
+                for (auto key_ = combination.begin(); key_ != combination.end() - 1; ++key_)
+                {
+                    const V2 crn_coord_b = grid->keyToCoord<false>(*key_);
+                    Corner *const &crn_b = &(crns.try_emplace(*key_, *key_, crn_coord_b).first->second);
+                    crn_a->neighbors.push_back(crn_b);
+                    crn_b->neighbors.push_back(crn_a);
+                }
             }
         }
 
     public:
-        VG2(Grid *const &grid, std::filesystem::path &fp_vg) : grid(grid), los(grid) { setup(fp_vg); }
+        VG2(Grid *const &grid, const std::filesystem::path fp_vg) : grid(grid), los(grid) { setup(fp_vg); }
         VG2 &operator=(const VG2 &) = delete; // Disallow copying
         VG2(const VG2 &) = delete;
         ~VG2() {}

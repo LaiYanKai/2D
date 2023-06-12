@@ -3,6 +3,7 @@
 #include "types.hpp"
 #include "math.hpp"
 #include "Vec2.hpp"
+#include "dir_idx.hpp"
 
 #pragma once
 namespace P2D
@@ -51,7 +52,9 @@ namespace P2D
                 delete[] _data;
         }
 
-        inline const V2 &getSize() const { return size_cell; }
+        template <bool is_cell>
+        inline const V2 &getSize() const { return is_cell ? size_cell : size_vert; }
+
         void init(const bool *const &_data, const V2 &size_cell)
         {
             this->size_cell = size_cell;
@@ -120,7 +123,7 @@ namespace P2D
         inline const mapkey_t &getRelKey(const dir_idx_t &dir_idx) const
         {
             assert(inRange(dir_idx) == true);
-            constexpr AdjLUT &ADJS = (is_cell) ? ADJS_CELL : ADJS_VERT;
+            const AdjLUT &ADJS = (is_cell) ? ADJS_CELL : ADJS_VERT;
             return ADJS[dir_idx].key;
         }
 
@@ -129,7 +132,7 @@ namespace P2D
         inline const V2 &getRelCoord(const dir_idx_t &dir_idx) const
         {
             assert(inRange(dir_idx) == true);
-            constexpr AdjLUT &ADJS = (is_cell) ? ADJS_CELL : ADJS_VERT;
+            const AdjLUT &ADJS = (is_cell) ? ADJS_CELL : ADJS_VERT;
             return ADJS[dir_idx].coord;
         }
 
@@ -150,11 +153,11 @@ namespace P2D
             if (dir_idx == 1)
                 rel_key_cell = (0 - vert_x);
             else if (dir_idx == 3)
-                rel_key_cell = (-1 - vert_x);
+                rel_key_cell = (-size_vert.y - vert_x + 1);
             else if (dir_idx == 5)
-                rel_key_cell = (-1 - vert_x + 1);
+                rel_key_cell = (-1 -size_vert.y - vert_x + 1);
             else if (dir_idx == 7)
-                rel_key_cell = (0 - vert_x + 1);
+                rel_key_cell = (-1 - vert_x );
             else
                 assert(false);
 
@@ -199,7 +202,7 @@ namespace P2D
         }
 
         template <bool is_cell>
-        inline const int_t &getBoundary(const dir_idx_t &dir_idx) const
+        inline const int_t getBoundary(const dir_idx_t &dir_idx) const
         {
             assert(inRange(dir_idx) == true);
             const V2 &size = is_cell ? size_cell : size_vert;

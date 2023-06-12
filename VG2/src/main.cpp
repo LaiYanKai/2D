@@ -1,27 +1,43 @@
+#include <filesystem>
 #include "P2D/P2D.hpp"
 #include "P2D/debug.hpp"
 #include "VG2/VG2.hpp"
 
+#define DIAG_BLOCK false
+
 int main(int, char **)
 {
-    std::vector<P2D::Scenarios> expt = P2D::getExperiment("VG2");
+    std::vector<P2D::Scenarios> expt = P2D::getExperiment(DIAG_BLOCK ? "VG2B" : "VG2N");
+
     for (const P2D::Scenarios & scens : expt)
-        P2D::writeResults(scens);
+    {
+        std::filesystem::path fp_vg = "VG2/combinations/";
+        fp_vg = fp_vg / scens.fp_dir / scens.fp_name ;
+        fp_vg.replace_extension(".combinations" + std::string(DIAG_BLOCK ? "B" : "N"));
 
-    P2D::VG2::Corner crn(1, {3,4});
+        P2D::Grid grid;
+        P2D::getMap(grid, scens);
+        P2D::VG2::VG2<DIAG_BLOCK> vg2(&grid, fp_vg);
 
-    P2D::VG2::Nodes nodes;
-    P2D::VG2::Node * node = nodes.emplace(&crn, nullptr, 1, 9);
-    P2D::VG2::Node * node2 = nodes.emplace(&crn, nullptr, 1, 30);
-    P2D::VG2::Node * node3 = nodes.emplace(&crn, nullptr, 1, 1);
-    P2D::VG2::Node * node4 = nodes.emplace(&crn, nullptr, 1, 3);
+        // P2D::writeResults(scens);
+    }
 
 
-    P2D::OpenList<P2D::VG2::Node> ol;
-    ol.queue(node);
-    ol.queue(node2);
-    ol.queue(node3);
-    ol.queue(node4);
+
+    // P2D::VG2::Corner crn(1, {3,4});
+
+    // P2D::VG2::Nodes nodes;
+    // P2D::VG2::Node * node = nodes.emplace(&crn, nullptr, 1, 9);
+    // P2D::VG2::Node * node2 = nodes.emplace(&crn, nullptr, 1, 30);
+    // P2D::VG2::Node * node3 = nodes.emplace(&crn, nullptr, 1, 1);
+    // P2D::VG2::Node * node4 = nodes.emplace(&crn, nullptr, 1, 3);
+
+
+    // P2D::OpenList<P2D::VG2::Node> ol;
+    // ol.queue(node);
+    // ol.queue(node2);
+    // ol.queue(node3);
+    // ol.queue(node4);
 
 
     _dbghelp;

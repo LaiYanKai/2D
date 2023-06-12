@@ -53,12 +53,12 @@ namespace P2D
 #define _dbg10(x)                      \
     do                                 \
     {                                  \
-        __dbgw(P2D::__dbg.printTabs() << x) \
+        __dbgw(P2D::__dbg.printTabs() << x << std::flush) \
     } while (0)
 #define _dbg00(x) \
     do            \
     {             \
-        __dbgw(x) \
+        __dbgw(x <<std::flush) \
     } while (0)
 #define _dbgtitle(x)                                                                                                    \
     do                                                                                                                  \

@@ -19,6 +19,11 @@ namespace P2D
     using mapkey_t = int32_t;
     const float_t INF = std::numeric_limits<float_t>::infinity();
     const float_t THRES = 1e-8;
+    template <typename T>
+    class Vec2;
+    using V2 = Vec2<int_t>;
+    using V2l = Vec2<long_t>;
+    using V2f = Vec2<float_t>;
 
     // ============================ Side ===========================
     enum class Side
@@ -47,4 +52,5 @@ namespace P2D
         Keep = 0,
         Del = 1
     };
+
 }

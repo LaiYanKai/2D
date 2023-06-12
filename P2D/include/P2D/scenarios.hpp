@@ -93,7 +93,7 @@ namespace P2D
         file.close();
     }
 
-    void getMap(Grid &grid, Scenarios &scens)
+    void getMap(Grid &grid, const Scenarios &scens)
     {
         // read from Benchmark
         std::ifstream file(scens.fp_map);
@@ -130,7 +130,7 @@ namespace P2D
         if (scens.scens.empty())
             std::cout << "writeResults: Nothing to write because there are no scenarios" << std::endl;
 
-        std::filesystem::create_directory(scens.fp_results.parent_path()); // create directory if it doesn't exist
+        std::filesystem::create_directories(scens.fp_results.parent_path()); // create directory if it doesn't exist
 
         std::ofstream file(scens.fp_results, std::ios::out);
         if (!file)

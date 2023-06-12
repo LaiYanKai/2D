@@ -298,10 +298,13 @@ namespace P2D
             }
             return out;
         }
+        std::string repr() const
+        {
+            std::stringstream ss;
+            ss << *this;
+            return ss.str();
+        }
     };
-    using V2 = Vec2<int_t>;    // in P2D/math.hpp
-    using V2l = Vec2<long_t>;  // in P2D/math.hpp
-    using V2f = Vec2<float_t>; // in P2D/math.hpp
 
     template <typename T>
     bool approxEqual(const Vec2<T> &lhs, const Vec2<T> &rhs, const T &thres = THRES)
@@ -396,8 +399,6 @@ namespace P2D
     {
         return dtrLeftOrRight<is_strict>(side, side_left_v_left, side_left_v_right).second;
     }
-
-    inline V2 dirIdxToDir(const dir_idx_t &dir_idx) { return dirIdxToDir<V2>(dir_idx); }
 
     template <typename T, typename U>
     U norm(const std::vector<Vec2<T>> &path)

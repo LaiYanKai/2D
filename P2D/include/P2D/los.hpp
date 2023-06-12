@@ -1,11 +1,13 @@
 #include <unordered_map>
 #include <filesystem>
 
-#include "P2D/P2D.hpp"
-#include "node.hpp"
+#include "types.hpp"
+#include "math.hpp"
+#include "Vec2.hpp"
+#include "dir_idx.hpp"
 
 #pragma once
-namespace P2D::VG2
+namespace P2D
 {
     template <bool diag_block = true>
     class Los
@@ -14,7 +16,7 @@ namespace P2D::VG2
         Grid *const grid;
 
     public:
-        Los(Grid *const &grid, std::filesystem::path &fp_vg) : grid(grid) {}
+        Los(Grid *const &grid) : grid(grid) {}
         Los &operator=(const Los &) = delete; // Disallow copying
         Los(const Los &) = delete;
         ~Los() {}
@@ -40,7 +42,7 @@ namespace P2D::VG2
             bool dim_long = abs_dir.x >= abs_dir.y ? 0 : 1;
 
             if (isCardinal(di) == true)
-                return _castCardinal<diag_block_at_start>(pi, di, dim_long, abs_dir);
+                return _castCardinal<diag_block_at_start>(ki, pi, di, dim_long, abs_dir);
             else
                 return _castOrdinal<diag_block_at_start>(ki, pi, di, dim_long, abs_dir, sgn_dir);
         }
@@ -124,20 +126,20 @@ namespace P2D::VG2
         }
 
         template <bool diag_block_at_start>
-        bool _castCardinal(const V2 &pi, const dir_idx_t &di, const bool &dim_long, const V2 &abs_dir) const
+        bool _castCardinal(const mapkey_t &ki, const V2 &pi, const dir_idx_t &di, const bool &dim_long, const V2 &abs_dir) const
         {
             // get bl and br
             mapkey_t kc_l = grid->addKeyToRelKey(ki, grid->getCellRelKey(addDirIdx(di, 3), pi.x));
             mapkey_t kc_r = grid->addKeyToRelKey(ki, grid->getCellRelKey(addDirIdx(di, 5), pi.x));
             mapkey_t rkc = grid->getRelKey<true>(di);
 
-            const bool out_of_map_left = grid->inMap<false>(pi + grid->getRelCoord(addDirIdx(di, 2)));
-            const bool out_of_map_right = grid->inMap<false>(pi + grid->getRelCoord(addDirIdx(di, 6)));
-            const bool out_of_map_back = grid->inMap<false>(pi + grid->getRelCoord(addDirIdx(di, 4)));
+            const bool out_of_map_left = grid->inMap<false>(pi + grid->getRelCoord<false>(addDirIdx(di, 2)));
+            const bool out_of_map_right = grid->inMap<false>(pi + grid->getRelCoord<false>(addDirIdx(di, 6)));
+            const bool out_of_map_back = grid->inMap<false>(pi + grid->getRelCoord<false>(addDirIdx(di, 4)));
 
             bool is_blocked_left = false;
             bool is_blocked_right = false;
-            if constexpr (diag_block = true && diag_block_at_start == false)
+            if constexpr (diag_block == true && diag_block_at_start == false)
             {
                 is_blocked_left = out_of_map_left || out_of_map_back || grid->isOc(kc_l);
                 is_blocked_right = out_of_map_right || out_of_map_back || grid->isOc(kc_r);

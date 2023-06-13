@@ -19,7 +19,7 @@ namespace P2D::TS2
         TS2(const TS2 &) = delete;
         ~TS2() {}
 
-        // use when map changes
+        // use when map data changes
         void setup()
         {
             const V2 &size_vert = grid->getSize<false>();
@@ -69,7 +69,7 @@ namespace P2D::TS2
                     window <<= 1;
                     mapkey_t cell_key = grid->addKeyToRelKey(node->key, grid->getCellRelKey(di, node->coord.x));
                     V2 cell_coord = node->coord + grid->getCellRelCoord(di);
-                    window |= !(grid->isAccessible(cell_key, cell_coord));  // 1 means out-of-map or occupied.
+                    window |= !(grid->isAccessible(cell_key, cell_coord)); // 1 means out-of-map or occupied.
                 }
 
                 // ------ Skip if vertex on checkerboard corner -------

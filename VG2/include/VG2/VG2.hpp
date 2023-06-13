@@ -194,6 +194,7 @@ namespace P2D::VG2
             return combinations;
         }
 
+        // use when map data changes
         // opens the vg file at fp_vg and loads the vg, otherwise, builds the vg and write to vg file at fp_vg
         void setup(const std::filesystem::path fp_vg)
         {

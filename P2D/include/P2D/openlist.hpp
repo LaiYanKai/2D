@@ -4,7 +4,7 @@
 namespace P2D
 {
     // doubly linked list  that does not own T* objects.
-    // T* must have members "openlist_prev" and "openlist_next", initialised to nullptrs
+    // T* must have members "openlist_prev" and "openlist_next", and "f", initialised to nullptrs
     template <typename T>
     class OpenList
     {

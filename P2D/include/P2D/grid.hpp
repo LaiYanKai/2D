@@ -155,14 +155,20 @@ namespace P2D
             else if (dir_idx == 3)
                 rel_key_cell = (-size_vert.y - vert_x + 1);
             else if (dir_idx == 5)
-                rel_key_cell = (-1 -size_vert.y - vert_x + 1);
+                rel_key_cell = (-1 - size_vert.y - vert_x + 1);
             else
             {
                 assert(dir_idx == 7);
-                rel_key_cell = (-1 - vert_x );
+                rel_key_cell = (-1 - vert_x);
             }
 
             return rel_key_cell;
+        }
+
+        inline void getCellKeyAndCoord(const dir_idx_t &dir_idx, const mapkey_t &vert_key, const V2 &vert_coord, mapkey_t &cell_key, V2 &cell_coord) const
+        {
+            cell_key = addKeyToRelKey(vert_key, getCellRelKey(dir_idx, vert_coord.x));
+            cell_coord = vert_coord + getCellRelCoord(dir_idx);
         }
 
         // returns relative cell coord (rel_x, rel_y) in dir_idx (1,3,5,7)

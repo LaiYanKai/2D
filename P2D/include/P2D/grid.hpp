@@ -156,10 +156,11 @@ namespace P2D
                 rel_key_cell = (-size_vert.y - vert_x + 1);
             else if (dir_idx == 5)
                 rel_key_cell = (-1 -size_vert.y - vert_x + 1);
-            else if (dir_idx == 7)
-                rel_key_cell = (-1 - vert_x );
             else
-                assert(false);
+            {
+                assert(dir_idx == 7);
+                rel_key_cell = (-1 - vert_x );
+            }
 
             return rel_key_cell;
         }

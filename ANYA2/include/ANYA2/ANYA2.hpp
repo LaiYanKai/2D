@@ -18,16 +18,24 @@ namespace P2D::ANYA2
             _dbgtitle("[Cone] Expand Cone Node { " << node << " }");
             _dbginc;
             assert(node->dx != 0);
+            // requires rays and dx to be resolved for current interval at dx.
 
             // ====================== Check if node's expanded interval intersects goal =============================
             if (node->dx + node->crn->coord.x == p_goal.x)
             {
-                V2 v_goalFromRoot = {node->dx, p_goal.y - node->crn->coord.y};
+                V2 y_gfr = p_goal.y - node->crn->coord.y; // y of vector goalFromRoot
                 bool found_goal;
-                if (node->dx < 0)
-                    found_goal = isLeft<false>(node->v_min, v_goalFromRoot) && isLeft<false>(v_goalFromRoot, node->v_max);
-                else
-                    found_goal = isLeft<false>(node->v_max, v_goalFromRoot) && isLeft<false>(v_goalFromRoot, node->v_min);
+                const Ray &ray_neg = node->ray_neg;
+                if (ray_neg.vec.y <= 0)               // ray is going to -y or no change in y from root
+                    found_goal = y_gfr >= ray_neg.dy; // the result of quotient (dx * ray.y / ray.x) is in +y direction of or on true value
+                else                                  // ray is going to +y from root
+                    found_goal = y_gfr > ray_neg.dy;  // the result of quotient is in -y direction of true value
+
+                const Ray &ray_pos = node->ray_pos;
+                if (ray_pos.y >= 0)                    // ray is going to +y or no change in y from root
+                    found_goal &= y_gfr <= ray_pos.dy; // result of quotient is in -y direction of or on true value
+                else                                   // ray is going to -y from root
+                    found_goal &= y_gfr < ray_pos.dy;  // the result of quotient is in +y direction of true value
 
                 if (found_goal == true)
                 { // terminate and find path if goal intersects interval
@@ -45,11 +53,11 @@ namespace P2D::ANYA2
 
             // ====================== Add Turning Points on both (+y and -y) sides ======================
             bool created_flat_nodes = false;
-            for (const int_t dy : {-1, 1})
+            for (const int_t sgn_y : {-1, 1})
             {
-                const V2 &ray = dy == -1 ? node->v_min : node->v_max;
-                if (ray.x == node->dx)
-                { // i.e. there can be a turning point on the min y side.
+                const Ray &ray = sgn_y < 0 ? node->ray_neg : node->ray_pos;
+                if (ray.remainder == false &&)
+                { // i.e. there can be a turning point on this side.
                     V2 cell_coord;
                     mapkey_t cell_key;
 

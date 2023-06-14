@@ -13,13 +13,16 @@ namespace P2D::ANYA2
     };
 
     // "min" is the end where the y coordinate is smaller.
-    struct Interval
+    struct Ray
     {
-        V2 p_min = {0, 0}, p_max = {0, 0};
-        mapkey_t k_min = -1, k_max = -1;
+        V2 vec = {0, 0};        // the vector of the ray from the root
+        mapkey_t key = -1;      // the vertex ({dx, dy} + root) key at the quotient of (dx * ray.y /ray.x)
+        int_t dy = 0;           // the quotient for the integer division: (dx * ray.y / ray.x)
+        bool remainder = false; // indicate if a remainder exists for the integer division: (dx * ray.y / ray.x)
 
-        Interval(const mapkey_t &k_min, const V2 &p_min, const mapkey_t &k_max, const V2 &p_max)
-            : p_min(p_min), p_max(p_max), k_min(k_min), k_max(k_max)
+        Ray() {}
+        Ray(const V2 ray, const mapkey_t &key, const int_t &dy, const bool &remainder)
+            : vec(vec), key(key), dy(dy), remainder(remainder)
         {
             static_assert(-1 == mapkey_t(-1)); // if -1 is used
         }
@@ -35,33 +38,24 @@ namespace P2D::ANYA2
 
         Corner(const mapkey_t &key, const V2 &coord) : coord(coord), key(key){};
 
-        inline Node *const &emplace_node(Corner *const &crn, Node *const &parent, const float_t &g, const float_t &h, const NodeType &type, const V2 &v_left, const V2 &v_right, const int_t &dx)
+        inline Node *const &emplaceNode(Node *const &parent, const float_t &g, const float_t &h, const NodeType &type, const int_t &dx)
         {
-            return &nodes.emplace_front(crn, parent, g, h, type, v_left, v_right, dx);
+            return &nodes.emplace_front(this, parent, g, h, type, dx);
         }
-    };
-    struct Div
-    {
-        // floored y value (guaranteed to be away from zero if quotient is negative)
-        int_t floored;
-        // dx *ray.y / ray.x
-
-        // dy = dx * ray.y / ray.x = floored + remainder / ray.x
-        // int_t dividend;
     };
     struct Node
     {
-        // root coordinate
-        V2 v_min = {0, 0}, v_max = {0, 0};
+        Ray ray_pos, ray_neg;
         Corner *const crn = nullptr;
         Node *parent = nullptr, *openlist_next = nullptr, *openlist_prev = nullptr;
         float_t f = INF, g = INF, h = INF;
-        int_t dx;
+        int_t dx = 0;
+
         // root key
         NodeType type = NodeType::Flat;
 
-        Node(Corner *const &crn, Node *const &parent, const float_t &g, const float_t &h, const NodeType &type, const V2 &v_min, const V2 &v_max, const int_t &dx)
-            : v_min(v_min), v_max(v_max), crn(crn), parent(parent), f(g + h), g(g), h(h), dx(dx), type(type) {}
+        Node(Corner *const &crn, Node *const &parent, const float_t &g, const float_t &h, const NodeType &type, const int_t &dx)
+            : crn(crn), parent(parent), f(g + h), g(g), h(h), dx(dx), type(type) {}
     };
 
     class Corners

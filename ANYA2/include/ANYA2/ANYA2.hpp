@@ -13,23 +13,49 @@ namespace P2D::ANYA2
         OpenList<Node> open_list;
         Los<diag_block> los;
 
-        void expandCone(Node *const &node)
+        inline bool expandCone(Node *const &node, const V2 &p_goal, std::vector<V2> &path)
         {
             _dbgtitle("[Cone] Expand Cone Node { " << node << " }");
             _dbginc;
+            assert(node->dx != 0);
+
+            // ====================== Check if node's expanded interval intersects goal =============================
+            if (node->dx + node->crn->coord.x == p_goal.x)
+            {
+                V2 v_goalFromRoot = {node->dx, p_goal.y - node->crn->coord.y};
+                bool found_goal;
+                if (node->dx < 0)
+                    found_goal = isLeft<false>(node->v_min, v_goalFromRoot) && isLeft<false>(v_goalFromRoot, node->v_max);
+                else
+                    found_goal = isLeft<false>(node->v_max, v_goalFromRoot) && isLeft<false>(v_goalFromRoot, node->v_min);
+
+                if (found_goal == true)
+                { // terminate and find path if goal intersects interval
+                    assert(path.empty() == true);
+                    path.push_back(p_goal);
+                    Node *n = node;
+                    do
+                    {
+                        path.push_back(n->crn->coord);
+                        n = n->parent;
+                    } while (n != nullptr);
+                    return true;
+                }
+            }
 
             // ====================== Add Turning Points on both (+y and -y) sides ======================
+            bool created_flat_nodes = false;
             for (const int_t dy : {-1, 1})
             {
-                const V2 &vec_y = dy == -1 ? node->v_min : node->v_max;
-                if (vec_y.x == node->dx)
+                const V2 &ray = dy == -1 ? node->v_min : node->v_max;
+                if (ray.x == node->dx)
                 { // i.e. there can be a turning point on the min y side.
                     V2 cell_coord;
                     mapkey_t cell_key;
 
                     // check +dx, +dy cell
                     dir_idx_t di = dirToDirIdx(node->dx, dy);
-                    const V2 vert_coord = vec_y + node->crn->coord;
+                    const V2 vert_coord = ray + node->crn->coord;
                     const mapkey_t vert_key = grid->coordToKey<false>(vert_coord);
                     grid->getCellKeyAndCoord(di, vert_key, vert_coord, cell_key, cell_coord);
                     if (grid->isAccessible(cell_key, cell_coord) == true)
@@ -52,6 +78,7 @@ namespace P2D::ANYA2
 
                             if (create_flat == true)
                             {
+                                created_flat_nodes = true;
                                 // createFlatNode();
                                 // set new vmax to this vmin
                                 // set new vmin to 0; // search in -y when expanding flat.
@@ -61,61 +88,156 @@ namespace P2D::ANYA2
                             } // create flat
                         }     // -dx, +dy cell is occupied
                     }         // +dx +dy cell is free
-                }             // has turning point if +dx is same as vec_y.x
+                }             // has turning point if +dx is same as ray.x
             }
 
-            // ====================== Scan cells ======================
-            mapkey_t kc_min;
-            V2 pc_min;
-            _dbg11("[Cone:-Y] -y Ray is (" << node->v_min << "). Root(" << node->crn->coord << ")");
-            if (node->dx == node->v_min.x)
-            { // ray cuts across min-y vertex on expanded interval (cur row)
-                if (node->v_min.y < 0)
-                { // kc_min depends on next row
-                    int_t dx_next = node->dx + (node->dx < 0 ? -1 : 1);
-                    const V2 vert_coord = node->crn->coord + V2{dx_next, dx_next * node->v_min.y / node->v_min.x};
+            // ====================== Determine starting (-y side) and ending cell (+y side) ======================
+            mapkey_t kc_min, kc_max;
+            V2 pc_min, pc_max;
+            for (const int_t &dy : {-1, 1})
+            {
+                const V2 &ray = dy < 0 ? node->v_min : node->v_max;
+                V2 &pc = dy < 0 ? pc_min : pc_max;
+                mapkey_t &kc = dy < 0 ? kc_min : kc_max;
+
+                _dbg11("[Cone:" << (dy < 0 ? "MinY" : "MaxY") << "] Ray is (" << ray << ")");
+                if (dy < 0 == ray.y < 0)
+                { // the starting -y cell depends on the next row
+                    const V2 vert_coord = node->crn->coord + V2{dx_next, dx_next * ray.y / ray.x};
                     const mapkey_t vert_key = grid->coordToKey<false>(vert_coord);
-                    // kc_min is in -dx, +y direction
+                    // kc is in -dx, +y direction (does not matter for max)
                     dir_idx_t di = dirToDirIdx(-node->dx, 1);
-                    grid->getCellKeyAndCoord(di, vert_coord, vert_key, kc_min, pc_min);
-                    _dbg11("[Cone:-Y] 1. Ray cuts thru cur row -y vertex and ray.y < 0. First cell is (" << pc_min << "), obtained from next row (floored) vertex(" << vert_coord << ")");
+                    grid->getCellKeyAndCoord(di, vert_coord, vert_key, kc, pc);
+                    if (dy < 0)
+                        _dbg11("[Cone:MinY] First Cell (" << pc << ") depends on NEXT row floored vertex(" << vert_coord << ")");
+                    else
+                        _dbg11("[Cone:MaxY] Last Cell (" << pc << ") depends on NEXT row floored vertex(" << vert_coord << ")");
                 }
                 else
-                { // kc_min depends on current cell
-                    const V2 vert_coord = node->crn->coord + node->v_min;
-                    const mapkey_t vert_key = grid->coordToKey<false>(vert_coord);
-                    dir_idx_t di = dirToDirIdx(node->dx, 1);
-                    grid->getCellKeyAndCoord(di, vert_coord, vert_key, kc_min, pc_min);
-                    _dbg11("[Cone:-Y] 2. Ray cuts thru cur row -y vertex and ray.y >= 0. First cell is (" << pc_min << "), obtained from cur row -y vertex(" << vert_coord << ")");
-                }
-            }
-            else
-            { // ray cuts across edge in +y direction after min-y (floored) vertex on expanded interval (cur row)
-                if (node->v_min.y < 0)
-                { // kc_min depends on next row
-                    int_t dx_next = node->dx + (node->dx < 0 ? -1 : 1);
-                    const V2 vert_coord = node->crn->coord + V2{dx_next, dx_next * node->v_min.y / node->v_min.x};
-                    const mapkey_t vert_key = grid->coordToKey<false>(vert_coord);
-                    // kc_min is in -dx, +y direction
-                    dir_idx_t di = dirToDirIdx(-node->dx, 1);
-                    grid->getCellKeyAndCoord(di, vert_coord, vert_key, kc_min, pc_min);
-                    _dbg11("[Cone:-Y] 3. Ray cuts thru edge and ray.y < 0. First cell is (" << pc_min << "), obtained from next row (floored) vertex(" << vert_coord << ")");
-                }
-                else
-                { // kc-min depends on the current floored vertex
-                    const V2 vert_coord = node->crn->coord + V2{node->dx, node->dx * node->v_min.y / node->v_min.x};
+                { // the starting -y cell depends on the current row
+                    const V2 vert_coord = node->crn->coord + V2{node->dx, node->dx * ray.y / ray.x};
                     const mapkey_t vert_key = grid->coordToKey<false>(vert_coord);
                     // kc_min is in +dx, +y direction
                     dir_idx_t di = dirToDirIdx(node->dx, 1);
-                    grid->getCellKeyAndCoord(di, vert_coord, vert_key, kc_min, pc_min);
-                    _dbg11("[Cone:-Y] 4. Ray cuts thru edge and ray.y < 0. First cell is (" << pc_min << "), obtained from cur row (floored) vertex(" << vert_coord << ")");
-
+                    grid->getCellKeyAndCoord(di, vert_coord, vert_key, kc, pc);
+                    if (dy < 0)
+                        _dbg11("[Cone:MinY] First Cell (" << pc << ") depends on CURRENT row floored vertex(" << vert_coord << ")");
+                    else
+                        _dbg11("[Cone:MaxY] Last Cell (" << pc << ") depends on CURRENT row floored vertex(" << vert_coord << ")");
                 }
-                const V2 vert_coord = node->crn->coord + V2{node->dx, node->dx * node->v_min.y / node->v_min.x};
-                const mapkey_t vert_key = grid->coordToKey<false>(vert_coord);
             }
 
-            _dbgdec;
+            // ================== Find intervals by scanning from first cell to last cell ==========================
+            std::vector<Interval> intervals;
+            {
+                bool scan_accessible = grid->isAccessible(kc_min, pc_min);
+                if (scan_accessible == true) // first cell is free, min side of interval is bounded by minray (v_min) of node.
+                    intervals.emplace_back(-1, {0, 0}, -1, {0, 0});
+                const mapkey_t &rkc = grid->getRelKey<true>(2);                                       // +y direction
+                const mapkey_t rkv_min = grid->getVertexRelKey(dirToDirIdx(-node->dx, -1), pc_min.x); // relative vertex key in -dx, -y direction from cell
+                const V2 rpv_min = grid->getVertexRelCoord(dirToDirIdx(-node->dx, -1));               // relative vertex coord in -dx, -y direction from cell
+
+                V2 pc = pc_min;
+                mapkey_t kc = kc_min;
+                while (true)
+                {
+                    // get next cell in +y direction
+                    kc = grid->addKeyToRelKey(kc, rkc);
+                    if (++pc.y > pc_max.y)
+                        break; // exit if outside of the interval
+
+                    if (scan_accessible == true && grid->isAccessible(kc, pc) == false)
+                    { // found the first inaccessible cell (out-of-map, occupied) after scanning free interval
+                        // flip state
+                        scan_accessible = false;
+
+                        // fill the unfilled interval
+                        assert(intervals.empty() == false && intervals.back().k_max == -1); // there must be an unfilled interval
+                        Interval &interval = intervals.back();
+                        interval.k_max = grid->addKeyToRelKey(kc, rkv_min);
+                        interval.p_max = pc + rpv_min;
+                    }
+                    else if (scan_accessible = false && grid->isAccessible(kc, pc) == true)
+                    { // found the first accessible cell after scanning inaccessible interval
+                        // flip state
+                        scan_accessible = true;
+
+                        // create new interval at current vertex
+                        assert(intervals.empty() == true || intervals.back().k_max >= 0); // interval must be filled or no interval at all
+                        intervals.emplace_back(
+                            grid->addKeyToRelKey(kc, rkv_min),
+                            pc + rpv_min,
+                            -1, {0, 0});
+                    }
+                }
+            }
+
+            // ================== Create Intervals ==========================
+            if (intervals.empty() == true)
+            { // regardless of flat nodes being created
+                _dbg11("[Cone] Next row is inaccessible. Stop expansion.");
+                // delete node and all applicable parents if possible
+                _dbgdec;
+                return true; // terminate
+            }                // no intervals
+            else if (created_flat_nodes == false && intervals.size() == 1)
+            {
+                _dbgtitle("[Cone] Intermediate Pruning: Continue to next row as there is only one successor");
+                _dbginc;
+                node->dx += node->dx > 0 ? 1 : -1;
+                const Interval &interval = intervals.back();
+                if (interval.k_min >= 0)
+                {
+                    node->v_min = interval.p_min - node->crn->coord;
+                    _dbg11("[Cone] Min Ray changed to ( " << node->v_min << " )");
+                }
+                else
+                    _dbg11("[Cone] Min Ray is unchanged");
+
+                if (interval.k_max >= 0)
+                {
+                    node->v_max = interval.p_max - node->Crn->coord;
+                    _dbg11("[Cone] Max Ray changed to ( " << node->v_max << " )")
+                }
+                else
+                    _dbg11("[Cone] Max Ray is unchanged");
+
+                _dbgdec;
+                _dbgdec;
+                return false;
+            } // no flat nodes created and no other successors
+            else
+            {
+                _dbgtitle("[Cone] More than one successor:");
+                _dbginc;
+                assert(intervals.size() > 1 || created_flat_nodes == true); // one interval and created flat nodes, or multiple intervals (regardless of flat nodes creation)
+
+                bool used_current_node = false;
+                for (const Interval &interval : intervals)
+                {
+                    _dbg11("[Cone] ---- Interval from VertexMin( " << interval.p_min << " ) to VertexMax( " << interval.p_max << " ) ----");
+
+                    V2 new_v_min = interval.k_min >= 0 ? interval.p_min - node->crn->coord : node->v_min;
+                    V2 new_v_max = interval.k_max >= 0 ? interval.p_max - node->crn->coord : node->v_max;
+                    _dbg11("[Cone] New VMin( " << new_v_min << " ), new VMax( " << new_v_max << " )");
+
+                    if (det(new_v_min, new_v_max) == 0)
+                    { // is parallel, no node can be formed
+                        _dbg11("[Cone] VMin and VMax is parallel, no node can be formed.");
+                        continue;
+                    }
+
+                    if (used_current_node == true)
+                    {
+                        _dbg11("[Cone] Create new cone node at root")
+                    }
+                }
+
+                _dbgdec;
+                _dbgdec;
+                return true;
+            } // more than one successor (cone node or flat node)
+            assert(false);
         }
 
     public:

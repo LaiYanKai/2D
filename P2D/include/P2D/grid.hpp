@@ -109,14 +109,14 @@ namespace P2D
 
         // returns key in dir_x and dir_y, direction.
         template <bool is_cell>
-        inline mapkey_t getRelKey(const int_t &dir_x, const int_t &dir_y) const
+        inline const mapkey_t &getRelKey(const int_t &dir_x, const int_t &dir_y) const
         {
-            const V2 &size = (is_cell) ? size_cell : size_vert;
-            return mapkey_t(dir_x) * mapkey_t(size.y) + mapkey_t(dir_y);
+            const dir_idx_t di = dirToDirIdx(dir_x, dir_y);
+            return getRelKey<is_cell>(di);
         }
         // returns key in rel_coord direction.
         template <bool is_cell>
-        inline mapkey_t getRelKey(const V2 &rel_coord) const { return getRelKey<is_cell>(rel_coord.x, rel_coord.y); }
+        inline const mapkey_t &getRelKey(const V2 &rel_coord) const { return getRelKey<is_cell>(rel_coord.x, rel_coord.y); }
 
         // returns relative key of an adjacent vertex/coord in direction dir_idx
         template <bool is_cell>
@@ -153,9 +153,9 @@ namespace P2D
             if (dir_idx == 1)
                 rel_key_cell = (0 - vert_x);
             else if (dir_idx == 3)
-                rel_key_cell = (-size_vert.y - vert_x + 1);
+                rel_key_cell = (-size_cell.y - vert_x);
             else if (dir_idx == 5)
-                rel_key_cell = (-1 - size_vert.y - vert_x + 1);
+                rel_key_cell = (-1 - size_cell.y - vert_x);
             else
             {
                 assert(dir_idx == 7);
@@ -165,13 +165,7 @@ namespace P2D
             return rel_key_cell;
         }
 
-        inline void getCellKeyAndCoord(const dir_idx_t &dir_idx, const mapkey_t &vert_key, const V2 &vert_coord, mapkey_t &cell_key, V2 &cell_coord) const
-        {
-            cell_key = addKeyToRelKey(vert_key, getCellRelKey(dir_idx, vert_coord.x));
-            cell_coord = vert_coord + getCellRelCoord(dir_idx);
-        }
-
-        // returns relative cell coord (rel_x, rel_y) in dir_idx (1,3,5,7)
+        // returns relative cell coord (rel_x, rel_y) in dir_idx (1,3,5,7) from vertex
         inline void getCellRelCoord(const dir_idx_t &dir_idx, int_t &rel_x, int_t &rel_y) const
         { // inline constexpr doesnt make a difference. //inline to put the function in header file explicitly
             assert(isOrdinal(dir_idx) == true);
@@ -200,13 +194,86 @@ namespace P2D
             else
                 assert(false);
         }
-        // returns relative cell coord (rel_x, rel_y) in dir_idx (1,3,5,7)
+        // returns relative cell coord (rel_x, rel_y) in dir_idx (1,3,5,7) from vertex
         inline V2 getCellRelCoord(const dir_idx_t &dir_idx) const
         {
             V2 cell;
             getCellRelCoord(dir_idx, cell.x, cell.y);
             return cell;
         }
+
+        // returns the cell key and coordinate in dir_idx (1,3,5,7) from a vertex
+        inline void getCellKeyAndCoord(const dir_idx_t &dir_idx, const mapkey_t &vert_key, const V2 &vert_coord, mapkey_t &cell_key, V2 &cell_coord) const
+        {
+            cell_key = addKeyToRelKey(vert_key, getCellRelKey(dir_idx, vert_coord.x));
+            cell_coord = vert_coord + getCellRelCoord(dir_idx);
+        }
+
+        // returns relative cell key in dir_idx (1,3,5,7) depending on the vertex x position
+        inline mapkey_t getVertexRelKey(const dir_idx_t &dir_idx, const int_t &cell_x) const
+        {
+            assert(isOrdinal(dir_idx) == true);
+            assert(inRange(dir_idx) == true);
+
+            mapkey_t rel_key_vert;
+            if (dir_idx == 1)
+                rel_key_vert = (size_vert.y + 1 + cell_x);
+            else if (dir_idx == 3)
+                rel_key_vert = (1 + cell_x);
+            else if (dir_idx == 5)
+                rel_key_vert = (cell_x);
+            else
+            {
+                assert(dir_idx == 7);
+                rel_key_vert = (size_vert.y + cell_x);
+            }
+
+            return rel_key_vert ;
+        }
+
+        // returns relative vertex coord (rel_x, rel_Y) in dir_idx (1,3,5,7) from cell
+        inline void getVertexRelCoord(const dir_idx_t &dir_idx, int_t &rel_x, int &rel_y) const
+        {
+            assert(isOrdinal(dir_idx) == true);
+            assert(inRange(dir_idx) == true);
+            if (dir_idx == 1)
+            {
+                rel_x = 1;
+                rel_y = 1;
+            }
+            else if (dir_idx == 3)
+            {
+                rel_x = 0;
+                rel_y = 1;
+            }
+            else if (dir_idx == 5)
+            {
+                rel_x = 0;
+                rel_y = 0;
+            }
+            else if (dir_idx == 7)
+            {
+                rel_x = 1;
+                rel_y = 0;
+            }
+            else
+                assert(false);
+        }
+        // returns relative vertex coord (rel_x, rel_Y) in dir_idx (1,3,5,7) from cell
+        inline V2 getVertexRelCoord(const dir_idx_t &dir_idx) const
+        {
+            V2 vert;
+            getVertexRelCoord(dir_idx, vert.x, vert.y);
+            return vert;
+        }
+
+        // returns the vertex key and coordinate in dir_idx (1,3,5,7) from a cell
+        inline void getVertexKeyAndCoord(const dir_idx_t &dir_idx, const mapkey_t &cell_key, const V2 &cell_coord, mapkey_t &vert_key, V2 &vert_coord) const
+        {
+            vert_key = addKeyToRelKey(vert_key, getVertexRelKey(dir_idx, cell_coord.x));
+            vert_coord = cell_coord + getVertexRelCoord(dir_idx);
+        }
+
 
         template <bool is_cell>
         inline int_t getBoundary(const dir_idx_t &dir_idx) const

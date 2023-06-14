@@ -12,6 +12,19 @@ namespace P2D::ANYA2
         Cone = 1
     };
 
+    // "min" is the end where the y coordinate is smaller.
+    struct Interval
+    {
+        V2 p_min = {0, 0}, p_max = {0, 0};
+        mapkey_t k_min = -1, k_max = -1;
+
+        Interval(const mapkey_t &k_min, const V2 &p_min, const mapkey_t &k_max, const V2 &p_max)
+            : p_min(p_min), p_max(p_max), k_min(k_min), k_max(k_max)
+        {
+            static_assert(-1 == mapkey_t(-1)); // if -1 is used
+        }
+    };
+
     struct Node;
     struct Corner
     {
@@ -31,7 +44,7 @@ namespace P2D::ANYA2
     {
         // root coordinate
         V2 v_min = {0, 0}, v_max = {0, 0};
-        Corner *const crn = nullptr; 
+        Corner *const crn = nullptr;
         Node *parent = nullptr, *openlist_next = nullptr, *openlist_prev = nullptr;
         float_t f = INF, g = INF, h = INF;
         int_t dx;

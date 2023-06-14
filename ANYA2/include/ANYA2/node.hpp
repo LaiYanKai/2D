@@ -30,7 +30,7 @@ namespace P2D::ANYA2
     struct Node
     {
         // root coordinate
-        V2 v_left = {0, 0}, v_right = {0, 0};
+        V2 v_min = {0, 0}, v_max = {0, 0};
         Corner *const crn = nullptr; 
         Node *parent = nullptr, *openlist_next = nullptr, *openlist_prev = nullptr;
         float_t f = INF, g = INF, h = INF;
@@ -38,8 +38,8 @@ namespace P2D::ANYA2
         // root key
         NodeType type = NodeType::Flat;
 
-        Node(Corner *const &crn, Node *const &parent, const float_t &g, const float_t &h, const NodeType &type, const V2 &v_left, const V2 &v_right, const int_t &dx)
-            : v_left(v_left), v_right(v_right), crn(crn), parent(parent), f(g + h), g(g), h(h), dx(dx), type(type) {}
+        Node(Corner *const &crn, Node *const &parent, const float_t &g, const float_t &h, const NodeType &type, const V2 &v_min, const V2 &v_max, const int_t &dx)
+            : v_min(v_min), v_max(v_max), crn(crn), parent(parent), f(g + h), g(g), h(h), dx(dx), type(type) {}
     };
 
     class Corners

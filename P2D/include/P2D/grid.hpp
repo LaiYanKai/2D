@@ -270,7 +270,7 @@ namespace P2D
         // returns the vertex key and coordinate in dir_idx (1,3,5,7) from a cell
         inline void getVertexKeyAndCoord(const dir_idx_t &dir_idx, const mapkey_t &cell_key, const V2 &cell_coord, mapkey_t &vert_key, V2 &vert_coord) const
         {
-            vert_key = addKeyToRelKey(vert_key, getVertexRelKey(dir_idx, cell_coord.x));
+            vert_key = addKeyToRelKey(cell_key, getVertexRelKey(dir_idx, cell_coord.x));
             vert_coord = cell_coord + getVertexRelCoord(dir_idx);
         }
 

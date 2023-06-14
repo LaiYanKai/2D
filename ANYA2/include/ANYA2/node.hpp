@@ -40,6 +40,15 @@ namespace P2D::ANYA2
             return &nodes.emplace_front(crn, parent, g, h, type, v_left, v_right, dx);
         }
     };
+    struct Div
+    {
+        // floored y value (guaranteed to be away from zero if quotient is negative)
+        int_t floored;
+        // dx *ray.y / ray.x
+
+        // dy = dx * ray.y / ray.x = floored + remainder / ray.x
+        // int_t dividend;
+    };
     struct Node
     {
         // root coordinate

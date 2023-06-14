@@ -21,5 +21,9 @@ int main(int, char **)
         if (SCEN_NUM == 0)
             P2D::writeResults(scens);
     }
+    // std::cout << int(5) / int(-2) << std::endl;
+    // std::cout << int(5) % int(-2) << std::endl;
+    // std::cout << int(-5) / int(2) << std::endl;
+    // std::cout << int(-5) % int(2) << std::endl;
     return 0;
 }

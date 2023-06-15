@@ -18,21 +18,22 @@ namespace P2D::ANYA2
             _dbgtitle("[Cone] Expand Cone Node { " << node << " }");
             _dbginc;
             assert(node->dx != 0);
-            // requires rays and dx to be resolved for current interval at dx.
+            const V2 &root = node->crn->coord;
 
+            // requires rays and dx to be resolved for current interval at dx.
             // ====================== Check if node's expanded interval intersects goal =============================
-            if (node->dx + node->crn->coord.x == p_goal.x)
+            if (node->dx + root.x == p_goal.x)
             {
-                V2 y_gfr = p_goal.y - node->crn->coord.y; // y of vector goalFromRoot
+                V2 y_gfr = p_goal.y - root.y; // y of vector goalFromRoot
                 bool found_goal;
                 const Ray &ray_neg = node->ray_neg;
-                if (ray_neg.vec.y <= 0)               // ray is going to -y or no change in y from root
+                if (ray_neg.dy <= 0)                  // ray is going to -y or no change in y from root
                     found_goal = y_gfr >= ray_neg.dy; // the result of quotient (dx * ray.y / ray.x) is in +y direction of or on true value
                 else                                  // ray is going to +y from root
                     found_goal = y_gfr > ray_neg.dy;  // the result of quotient is in -y direction of true value
 
                 const Ray &ray_pos = node->ray_pos;
-                if (ray_pos.y >= 0)                    // ray is going to +y or no change in y from root
+                if (ray_pos.dy >= 0)                   // ray is going to +y or no change in y from root
                     found_goal &= y_gfr <= ray_pos.dy; // result of quotient is in -y direction of or on true value
                 else                                   // ray is going to -y from root
                     found_goal &= y_gfr < ray_pos.dy;  // the result of quotient is in +y direction of true value
@@ -51,164 +52,347 @@ namespace P2D::ANYA2
                 }
             }
 
-            // ====================== Add Turning Points on both (+y and -y) sides ======================
-            bool created_flat_nodes = false;
-            for (const int_t sgn_y : {-1, 1})
+            // ======== Check if the next interval is out of map =============
+            const int_t &dx = node->dx;
+            const int_t x = node->dx + root.x;
+
+            if (x == 0 || x == grid->getSize<true>().x)
             {
-                const Ray &ray = sgn_y < 0 ? node->ray_neg : node->ray_pos;
-                if (ray.remainder == false &&)
-                { // i.e. there can be a turning point on this side.
-                    V2 cell_coord;
-                    mapkey_t cell_key;
+                _dbg11("[Cone] Next Interval is out of map ");
+                return true;
+            }
+            const int_t dx_next = node->dx + (node->dx < 0 ? -1 : 1);
+            const int_t x_next = dx_next + root.x;
 
-                    // check +dx, +dy cell
-                    dir_idx_t di = dirToDirIdx(node->dx, dy);
-                    const V2 vert_coord = ray + node->crn->coord;
-                    const mapkey_t vert_key = grid->coordToKey<false>(vert_coord);
-                    grid->getCellKeyAndCoord(di, vert_key, vert_coord, cell_key, cell_coord);
-                    if (grid->isAccessible(cell_key, cell_coord) == true)
-                    { // +dx, +dy cell is free
+            // ====================== Add Turning Points on both (+y and -y) sides ======================
+            // get the y rounded-to-zero (r2z) vertices near the edge of the current and next intervals
+            Boundary boundary_neg(node->ray_neg, -1);
+            Boundary boundary_pos(node->ray_pos, 1);
 
-                        // check -dx, +dy cell
-                        di = dirToDirIdx(-node->dx, dy);
-                        grid->getCellKeyAndCoord(di, vert_key, vert_coord, cell_key, cell_coord);
-                        if (grid->isAccessible(cell_key, cell_coord) == false)
-                        { // -dx, +dy cell is occupied
+            bool has_flat_successors = false;
+            for (Boundary &b : {boundary_neg, boundary_pos})
+            {
+                b.pv_cur = V2(dx, dx * b.ray.y / b.ray.x) + root;
+                b.kv_cur = grid->coordToKey<false>(b.pv_cur);
+
+                if (b.ray_dir >= 0)
+                { // (ray is perpendicular or has tail interval)
+                    V2 pc;
+                    mapkey_t kc;
+
+                    // check +dx, +sgn_y cell
+                    dir_idx_t di = dirToDirIdx(dx, b.sgn_y);
+                    grid->getCellKeyAndCoord(di, b.kv_cur, b.pv_cur, kc, pc);
+                    if (grid->isAccessible(kc, pc) == true)
+                    { // +dx, +sgn_y cell is free
+
+                        // check -dx, +sgn_y cell
+                        di = dirToDirIdx(-dx, sgn_y);
+                        grid->getCellKeyAndCoord(di, b.kv_cur, b.pv_cur, kc, pc);
+                        if (grid->isAccessible(kc, pc) == false)
+                        { // -dx, +sgn_y cell is occupied
 
                             bool create_flat = true;
                             if constexpr (diag_block == true)
-                            { // check +dx, -dy cell
-                                di = dirToDirIdx(node->dx, -dy);
-                                grid->getCellKeyAndCoord(di, vert_key, vert_coord, cell_key, cell_coord);
+                            { // check +dx, -sgn_y cell
+                                di = dirToDirIdx(dx, -sgn_y);
+                                grid->getCellKeyAndCoord(di, b.kv_cur, b.pv_cur, kc, pc);
                                 // create flat if +dx, +y cell is free
-                                create_flat = grid->isAccessible(cell_key, cell_coord) == true;
+                                create_flat = grid->isAccessible(kc, pc) == true;
                             }
 
                             if (create_flat == true)
                             {
-                                created_flat_nodes = true;
+                                has_flat_successors = true;
                                 // createFlatNode();
                                 // set new vmax to this vmin
                                 // set new vmin to 0; // search in -y when expanding flat.
                                 // set new root to vert_coord, vert_key
                                 // set new dx to this dx
+                                Corner *new_crn = crns.try_emplace(b.kv_cur, b.pv_cur);
+                                float_t new_g = node->g + norm(b.pv_cur, root);
+                                if (approxGt(new_crn->min_g, new_g) == true)
+                                {
+                                    Node *new_node = node->crn->emplaceNode(node, new_g, INF, NodeType::Flat, sgn(dx));
+                                    updateHCost(new_node, p_goal);
+                                    open_list.queue(new_node);
+                                    _dbg11("[Cone] <<<<<< [QUEUE] new flat node at neg {" << new_node << "}");
+                                }
+                                else
+                                {
+                                    _dbg11("[Cone] Flat node cannot be created at Vert(" << b.pv_cur << ") bcos new G$(" << new_g << ") >= cur G$(" << new_crn->min_g << ")");
+                                }
 
                             } // create flat
-                        }     // -dx, +dy cell is occupied
-                    }         // +dx +dy cell is free
+                        }     // -dx, +sgn_y cell is occupied
+                    }         // +dx +sgn_y cell is free
                 }             // has turning point if +dx is same as ray.x
             }
 
-            // ====================== Determine starting (-y side) and ending cell (+y side) ======================
-            mapkey_t kc_min, kc_max;
-            V2 pc_min, pc_max;
-            for (const int_t &dy : {-1, 1})
+            // ====================== Determine first and last cell to check for cell row after interval =======================
             {
-                const V2 &ray = dy < 0 ? node->v_min : node->v_max;
-                V2 &pc = dy < 0 ? pc_min : pc_max;
-                mapkey_t &kc = dy < 0 ? kc_min : kc_max;
-
-                _dbg11("[Cone:" << (dy < 0 ? "MinY" : "MaxY") << "] Ray is (" << ray << ")");
-                if (dy < 0 == ray.y < 0)
-                { // the starting -y cell depends on the next row
-                    const V2 vert_coord = node->crn->coord + V2{dx_next, dx_next * ray.y / ray.x};
-                    const mapkey_t vert_key = grid->coordToKey<false>(vert_coord);
-                    // kc is in -dx, +y direction (does not matter for max)
-                    dir_idx_t di = dirToDirIdx(-node->dx, 1);
-                    grid->getCellKeyAndCoord(di, vert_coord, vert_key, kc, pc);
-                    if (dy < 0)
-                        _dbg11("[Cone:MinY] First Cell (" << pc << ") depends on NEXT row floored vertex(" << vert_coord << ")");
-                    else
-                        _dbg11("[Cone:MaxY] Last Cell (" << pc << ") depends on NEXT row floored vertex(" << vert_coord << ")");
+                Boundary &b = boundary_neg;
+                if (b.ray_dir > 0)
+                { // has tail
+                    // determine first cell by taking y of next row
+                    int_t y_next = dx_next * b.ray->vec.y / b.ray->vec.x + root.y; // r2z coordinate (r2z is in +y direction)
+                    --y_next;                                                      // to get the corresponding vertex at +dx +y of cell
+                    const int_t y_map_bound = 0;
+                    b.pv_bound = V2(b.pv_cur.x, (y_next < y_map_bound) ? y_map_bound : y_next);
+                    b.kv_bound = grid->coordToKey<false>(b.pv_bound);
                 }
                 else
-                { // the starting -y cell depends on the current row
-                    const V2 vert_coord = node->crn->coord + V2{node->dx, node->dx * ray.y / ray.x};
-                    const mapkey_t vert_key = grid->coordToKey<false>(vert_coord);
-                    // kc_min is in +dx, +y direction
-                    dir_idx_t di = dirToDirIdx(node->dx, 1);
-                    grid->getCellKeyAndCoord(di, vert_coord, vert_key, kc, pc);
-                    if (dy < 0)
-                        _dbg11("[Cone:MinY] First Cell (" << pc << ") depends on CURRENT row floored vertex(" << vert_coord << ")");
-                    else
-                        _dbg11("[Cone:MaxY] Last Cell (" << pc << ") depends on CURRENT row floored vertex(" << vert_coord << ")");
+                { // perpendicular or no tail. determine first cell from current row
+                    b.pv_bound = b.pv_cur;
+                    b.kv_bound = b.kv_cur;
                 }
+                dir_idx_t di = dirToDirIdx(dx, 1);
+                b.kc_bound = grid->addKeyToRelKey(b.kv_bound, grid->getCellRelKey(di, b.pv_bound.x));
+
+                _dbg11("[Cone] First vertex(" << b.pv_bound << ")");
+            }
+            {
+                Boundary &b = boundary_pos;
+                assert(b.kv_cur == grid->coordToKey(b.pv_cur));
+
+                if (b.ray_dir > 0)
+                { // has tail
+                    // determine first cell by taking y of next row
+                    int_t y_next = dx_next * b.ray->vec.y / b.ray->vec.x + root.y; // r2z coordinate (r2z is in -y direction)
+                    ++y_next;                                                      // so that the boundary lies outside of the sec
+                    const int_t y_map_bound = grid->getBoundary<false>(2);
+                    b.pv_bound = V2(b.pv_cur.x, (y_next > y_map_bound) ? y_map_bound : y_next);
+                    b.kv_bound = grid->coordToKey<false>(b.pv_bound);
+                }
+                else
+                {                          // perpendicular or no tail. determine first cell from current row
+                    b.pv_bound = b.pv_cur; // lies outside of angular sec
+                    b.kv_bound = b.kv_cur; // lies outside of sec
+                }
+
+                _dbg11("[Cone] Last vertex(" << b.pv_bound << ")");
             }
 
-            // ================== Find intervals by scanning from first cell to last cell ==========================
+            assert(boundary_pos.pv_bound.y >= boundary_neg.pv_bound.y); // cannot be opposite under current assumptions
+
+            // ---------- Scan cell interval --------------
             std::vector<Interval> intervals;
             {
-                bool scan_accessible = grid->isAccessible(kc_min, pc_min);
-                if (scan_accessible == true) // first cell is free, min side of interval is bounded by minray (v_min) of node.
-                    intervals.emplace_back(-1, {0, 0}, -1, {0, 0});
-                const mapkey_t &rkc = grid->getRelKey<true>(2);                                       // +y direction
-                const mapkey_t rkv_min = grid->getVertexRelKey(dirToDirIdx(-node->dx, -1), pc_min.x); // relative vertex key in -dx, -y direction from cell
-                const V2 rpv_min = grid->getVertexRelCoord(dirToDirIdx(-node->dx, -1));               // relative vertex coord in -dx, -y direction from cell
-
-                V2 pc = pc_min;
-                mapkey_t kc = kc_min;
-                while (true)
+                const int_t &y_last = boundary_pos.pv_bound.y;
+                int_t y = boundary_neg.pv_bound.y;
+                mapkey_t kc = grid->boundary_neg.kc_bound;
+                const mapkey_t &rkc = grid->getRelKey<true>(2);
+                bool scan_oc = true;
+                while (1)
                 {
-                    // get next cell in +y direction
+                    if (scan_oc == true && grid->isOc(kc) == false)
+                    { // found first free cell after scanning occupied cells. create new interval
+                        assert(intervals.empty() == true || intervals.back().vert_pos.y >= 0);
+                        intervals.emplace_back(x, y, root);
+                        scan_oc = false;
+                    }
+                    else if (scan_oc == false && grid->isOc(kc) == true)
+                    { // found first oc cell after scanning free cells. fill last interval
+                        assert(intervals.empty() == false && intervals.back().vert_pos.y < 0);
+                        intervals.back().vert_pos = V2(x, y);
+                        intervals.back().diff_pos = V2(x, y) - root;
+                        scan_oc = true;
+                    }
+                    ++y;
+                    if (y >= last_y)
+                        break;
                     kc = grid->addKeyToRelKey(kc, rkc);
-                    if (++pc.y > pc_max.y)
-                        break; // exit if outside of the interval
-
-                    if (scan_accessible == true && grid->isAccessible(kc, pc) == false)
-                    { // found the first inaccessible cell (out-of-map, occupied) after scanning free interval
-                        // flip state
-                        scan_accessible = false;
-
-                        // fill the unfilled interval
-                        assert(intervals.empty() == false && intervals.back().k_max == -1); // there must be an unfilled interval
-                        Interval &interval = intervals.back();
-                        interval.k_max = grid->addKeyToRelKey(kc, rkv_min);
-                        interval.p_max = pc + rpv_min;
-                    }
-                    else if (scan_accessible = false && grid->isAccessible(kc, pc) == true)
-                    { // found the first accessible cell after scanning inaccessible interval
-                        // flip state
-                        scan_accessible = true;
-
-                        // create new interval at current vertex
-                        assert(intervals.empty() == true || intervals.back().k_max >= 0); // interval must be filled or no interval at all
-                        intervals.emplace_back(
-                            grid->addKeyToRelKey(kc, rkv_min),
-                            pc + rpv_min,
-                            -1, {0, 0});
-                    }
+                }
+                if (intervals.back().vert_pos.y < 0) // unfilled
+                {
+                    intervals.back().vert_pos = V2(x, last_y);
+                    intervals.back().diff_pos = V2(x, last_y) - root;
                 }
             }
 
-            // ================== Create Intervals ==========================
+            // ================= Delete Intervals that lie outside the angular sector ==========================
+            if (boundary_neg.ray_dir > 0)
+            { // has tail at negative side
+                for (auto itv_ = intervals.begin(); itv_ != intervals.end();)
+                {
+                    assert(itv_->diff_pos.x == dx);
+                    if (sgn(dx) * det(node->ray_neg, itv_->diff_pos) <= 0) // interval lies beyond neg ray of node
+                        itv_ = intervals.erase(itv_);
+                    else
+                        ++itv_;
+                }
+            }
+            if (boundary_pos.ray_dir > 0)
+            { // has tail at positive side
+                for (auto itv_ = intervals.begin(); itv_ != intervals.end();)
+                {
+                    assert(itv_->diff_neg.x == dx);
+                    if (sgn(dx) * det(itv_->diff_neg, node->ray_pos) <= 0)
+                        itv_ = intervals.erase(itv_);
+                    else
+                        ++itv_;
+                }
+            }
+
+            // ================= Process Intervals ==========================
+            bool has_cone_successors = false;
+            for (auto itv_ = intervals.begin(); itv_ != intervals.end();)
+            {
+                V2 &vert_neg = itv_->vert_neg;
+                V2 &diff_neg = itv_->diff_neg;
+                V2 &vert_pos = itv_->vert_pos;
+                V2 &diff_pos = itv_->diff_pos;
+
+                // ---- Adjust negative end's vert and diff from current row if applicable ----
+                if (diff_neg.y < 0)
+                {
+                    diff_neg.x = dx_next;
+                    vert_neg.x = x_next;
+                    assert(node->ray_neg.y < 0);
+                    if (sgn(dx) * det(node->ray_neg, diff_neg) <= 0)
+                    { // interval neg vertex lies outside of node's negative ray
+                        diff_neg = node->ray_neg;
+                        vert_neg.y = root.y + dx_next * diff_neg.y / diff_neg.x;
+                    }
+                }
+                else if (diff_neg.y == 0)
+                {
+                    diff_neg.x = dx_next;
+                    vert_neg.x = x_next;
+                }
+
+                // ---- Adjust positive end's vert and diff from current row if applicable ----
+                if (diff_pos.y > 0)
+                {
+                    diff_pos.x = dx_next;
+                    vert_pos.x = x_next;
+                    assert(node->ray_pos.vec.y > 0);
+                    if (sgn(dx) * det(diff_pos, node->ray_pos) <= 0)
+                    { // interval pos vertex lies outside of node's positive ray
+                        diff_pos = node->ray_pos;
+                        vert_pos.y = root.y + dx_next * diff_pos.y / diff_pos.x;
+                    }
+                }
+                else if (diff_pos.y == 0)
+                {
+                    diff_pos.x = dx_next;
+                    vert_pos.x = x_next;
+                }
+
+                // ---- Decide if cone node can be generated, and if the current node can continue expanding in this interval ----
+                if (diff_neg.y > 0)
+                { // cone node exists at negative side of interval
+                    // test g-cost to see if cheaper to reach node
+                    const V2 &new_root = vert_neg;
+                    mapkey_t new_root_key = grid->coordToKey<false>(new_root);
+                    Corner *new_crn = crns.try_emplace(new_root_key, new_root);
+                    float_t new_g = node->g + norm(new_root, root);
+                    if (approxGt(new_crn->min_g, new_g) == true)
+                    {
+                        has_cone_successors = true;
+                        Node *new_node = node->crn->emplaceNode(node, new_g, INF, NodeType::Cone, sgn(dx));
+                        new_node->ray_neg = V2(new_node->dx, 0);
+
+                        // adjust ray_pos
+                        new_node->ray_pos = diff_neg;
+                        int_t new_y = new_root.y + new_node->dx * diff_neg.y / diff_neg.x;
+                        assert(vert_pos.x == x_next);
+                        if (new_y > vert_pos.y) // this is okay bcos vert_pos is not adjusted by the node's ray_pos (bcos ray_pos can't cross ray_neg), so this condition is due to obstacle at vert_pos
+                            new_node->ray_pos = V2(new_node->dx, vert_pos.y - new_root.y);
+
+                        // queue
+                        updateHCost(new_node, p_goal);
+                        open_list.queue(new_node);
+                        _dbg11("[Cone] <<<<<< [QUEUE] new cone node at neg {" << new_node << "}");
+                    }
+                    else
+                    {
+                        _dbg11("[Cone] Cone node cannot be created at VertNeg(" << vert_neg << ") bcos new G$(" << new_g << ") >= cur G$(" << new_crn->min_g << ")");
+                    }
+
+                    if (sgn(dx) * det(diff_neg, diff_pos) <= 0)
+                    {
+                        _dbg11("[Cone] No continuation from current root at interval");
+                        itv_ = intervals.erase(itv_);
+                    }
+                    else
+                    {
+                        _dbg11("[Cone] Can continue from current root at interval");
+                        // adjust vert_neg
+                        vert_neg.x = x_next;
+                        vert_neg.y = dx_next * diff_neg.y / diff_neg.x + root.y;
+                        ++itv_;
+                    }
+                }
+                else if (diff_pos.y < 0)
+                { // cone node exists at positive side of interval
+
+                    // test g-cost to see if cheaper to reach node
+                    const V2 &new_root = vert_pos;
+                    mapkey_t new_root_key = grid->coordToKey<false>(new_root);
+                    Corner *new_crn = crns.try_emplace(new_root_key, new_root);
+                    float_t new_g = node->g + norm(new_root, root);
+                    if (approxGt(new_crn->min_g, new_g) == true)
+                    {
+                        has_cone_successors = true;
+                        Node *new_node = node->crn->emplaceNode(node, new_g, INF, NodeType::Cone, sgn(dx));
+                        new_node->ray_pos = V2(new_node->dx, 0);
+
+                        // adjust ray_neg
+                        new_node->ray_neg = diff_pos;
+                        int_t new_y = new_root.y + new_node->dx * diff_pos.y / diff_pos.x;
+                        assert(vert_neg.x == x_next);
+                        if (new_y < vert_neg.y) // this is okay bcos vert_pos is not adjusted by the node's ray_pos (bcos ray_pos can't cross ray_neg), so this condition is due to obstacle at vert_pos
+                            new_node->ray_pos = V2(new_node->dx, vert_neg.y - new_root.y);
+
+                        // queue
+                        updateHCost(new_node, p_goal);
+                        open_list.queue(new_node);
+                        _dbg11("[Cone] <<<<<< [QUEUE] new cone node at pos {" << new_node << "}");
+                    }
+                    else
+                    {
+                        _dbg11("[Cone] Cone node cannot be created at VertPos(" << vert_pos << ") bcos new G$(" << new_g << ") >= cur G$(" << new_crn->min_g << ")");
+                    }
+
+                    if (sgn(dx) * det(diff_neg, diff_pos) <= 0)
+                    {
+                        _dbg11("[Cone] No continuation from current root at interval");
+                        itv_ = intervals.erase(itv_);
+                    }
+                    else
+                    {
+                        _dbg11("[Cone] Can continue from current root at interval");
+                        // adjust vert_pos
+                        vert_pos.x = x_next;
+                        vert_pos.y = dx_next * diff_pos.y / diff_pos.x + root.y;
+                        ++itv_;
+                    }
+                }
+                else
+                { // no cone nodes
+                    // continue as normal
+                    _dbg11("[Cone] Continue at normal interval");
+                    ++itv_;
+                }
+            }
+
+            // ==================  Check if next row can be expanded by current root ==========================
             if (intervals.empty() == true)
             { // regardless of flat nodes being created
-                _dbg11("[Cone] Next row is inaccessible. Stop expansion.");
+                _dbg11("[Cone] Next row is inaccessible by current root. Stop expansion.");
                 // delete node and all applicable parents if possible
                 _dbgdec;
                 return true; // terminate
             }                // no intervals
-            else if (created_flat_nodes == false && intervals.size() == 1)
+            else if (has_flat_successors == false && has_cone_successors == false && intervals.size() == 1)
             {
                 _dbgtitle("[Cone] Intermediate Pruning: Continue to next row as there is only one successor");
                 _dbginc;
-                node->dx += node->dx > 0 ? 1 : -1;
-                const Interval &interval = intervals.back();
-                if (interval.k_min >= 0)
-                {
-                    node->v_min = interval.p_min - node->crn->coord;
-                    _dbg11("[Cone] Min Ray changed to ( " << node->v_min << " )");
-                }
-                else
-                    _dbg11("[Cone] Min Ray is unchanged");
-
-                if (interval.k_max >= 0)
-                {
-                    node->v_max = interval.p_max - node->Crn->coord;
-                    _dbg11("[Cone] Max Ray changed to ( " << node->v_max << " )")
-                }
-                else
-                    _dbg11("[Cone] Max Ray is unchanged");
+                Interval &interval = intervals.back();
+                node->dx = dx_next;
+                node->ray_neg = interval.diff_neg;
+                node->ray_pos = interval.diff_pos;
 
                 _dbgdec;
                 _dbgdec;
@@ -218,26 +402,32 @@ namespace P2D::ANYA2
             {
                 _dbgtitle("[Cone] More than one successor:");
                 _dbginc;
-                assert(intervals.size() > 1 || created_flat_nodes == true); // one interval and created flat nodes, or multiple intervals (regardless of flat nodes creation)
+                assert(intervals.size() > 1 || has_flat_successors == true); // one interval and created flat nodes, or multiple intervals (regardless of flat nodes creation)
 
                 bool used_current_node = false;
                 for (const Interval &interval : intervals)
                 {
-                    _dbg11("[Cone] ---- Interval from VertexMin( " << interval.p_min << " ) to VertexMax( " << interval.p_max << " ) ----");
-
-                    V2 new_v_min = interval.k_min >= 0 ? interval.p_min - node->crn->coord : node->v_min;
-                    V2 new_v_max = interval.k_max >= 0 ? interval.p_max - node->crn->coord : node->v_max;
-                    _dbg11("[Cone] New VMin( " << new_v_min << " ), new VMax( " << new_v_max << " )");
-
-                    if (det(new_v_min, new_v_max) == 0)
-                    { // is parallel, no node can be formed
-                        _dbg11("[Cone] VMin and VMax is parallel, no node can be formed.");
-                        continue;
-                    }
+                    _dbg11("[Cone] ---- Interval from VertexNeg( " << interval.vert_neg << " ) DiffNeg(" << interval.diff_neg << ")");
+                    _dbg11("[Cone]                 to VertexPos( " << interval.vert_pos << " ) DiffPos(" << interval.diff_pos << ")");
 
                     if (used_current_node == true)
                     {
-                        _dbg11("[Cone] Create new cone node at root")
+                        Node *new_node = node->crn->emplaceNode(node->parent, node->g, INF, NodeType::Cone, dx_next);
+                        new_node->dx = dx_next;
+                        new_node->ray_neg = interval.diff_neg;
+                        new_node->ray_pos = interval.diff_pos;
+                        updateHCost(new_node, p_goal);
+                        open_list.queue(new_node);
+                        _dbg11("[Cone] <<<<<< [QUEUE] new node at root {" << new_node << "}");
+                    }
+                    else
+                    {
+                        node->dx = dx_next;
+                        node->ray_neg = interval.diff_neg;
+                        node->ray_pos = interval.diff_pos;
+                        updateHCost(node, p_goal);
+                        open_list.queue(node);
+                        _dbg11("[Cone] <<<<<< [QUEUE] node at root {" << node << "}");
                     }
                 }
 
@@ -249,7 +439,10 @@ namespace P2D::ANYA2
         }
 
     public:
-        ANYA2(Grid *const &grid) : grid(grid), los(grid) { setup(); }
+        ANYA2(Grid *const &grid) : grid(grid), los(grid)
+        {
+            setup();
+        }
         ANYA2 &operator=(const ANYA2 &) = delete; // Disallow copying
         ANYA2(const ANYA2 &) = delete;
         ~ANYA2() {}

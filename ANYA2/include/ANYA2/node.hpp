@@ -12,20 +12,10 @@ namespace P2D::ANYA2
         Cone = 1
     };
 
-    // "min" is the end where the y coordinate is smaller.
-    struct Ray
+    struct Interval
     {
-        V2 vec = {0, 0};        // the vector of the ray from the root
-        mapkey_t key = -1;      // the vertex ({dx, dy} + root) key at the quotient of (dx * ray.y /ray.x)
-        int_t dy = 0;           // the quotient for the integer division: (dx * ray.y / ray.x)
-        bool remainder = false; // indicate if a remainder exists for the integer division: (dx * ray.y / ray.x)
-
-        Ray() {}
-        Ray(const V2 ray, const mapkey_t &key, const int_t &dy, const bool &remainder)
-            : vec(vec), key(key), dy(dy), remainder(remainder)
-        {
-            static_assert(-1 == mapkey_t(-1)); // if -1 is used
-        }
+        V2 vert_pos = {-1, -1}, vert_neg = {-1, -1}, diff_pos, diff_neg;
+        Interval(const int_t &x_neg, const int_t &y_neg, const V2 &root_coord) : vert_neg(x_neg, y_neg), diff_neg(vert_neg - root_coord) {}
     };
 
     struct Node;
@@ -45,7 +35,7 @@ namespace P2D::ANYA2
     };
     struct Node
     {
-        Ray ray_pos, ray_neg;
+        V2 ray_pos, ray_neg;
         Corner *const crn = nullptr;
         Node *parent = nullptr, *openlist_next = nullptr, *openlist_prev = nullptr;
         float_t f = INF, g = INF, h = INF;
@@ -56,6 +46,18 @@ namespace P2D::ANYA2
 
         Node(Corner *const &crn, Node *const &parent, const float_t &g, const float_t &h, const NodeType &type, const int_t &dx)
             : crn(crn), parent(parent), f(g + h), g(g), h(h), dx(dx), type(type) {}
+    };
+
+    struct Boundary
+    {
+        const V2 &ray;
+        V2 pv_cur, pv_bound;
+        mapkey_t kv_cur, kv_bound, kc_bound;
+        const int_t sgn_y;
+        const int_t ray_dir; // if positive, there is a tail. if zero, ray has no y component. if negative, ray has no tail
+
+        // does not calculate next interval
+        Boundary(const V2 &ray, const int_t &sgn_y) : ray(ray), sgn_y(sgn_y), ray_dir(ray.y * sgn_y) {}
     };
 
     class Corners

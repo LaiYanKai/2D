@@ -28,14 +28,14 @@ namespace P2D::ANYA2
 
         Corner(const mapkey_t &key, const V2 &coord) : coord(coord), key(key){};
 
-        inline Node *const &emplaceNode(Node *const &parent, const float_t &g, const float_t &h, const NodeType &type, const int_t &dx)
+        inline Node *const &emplaceNode(Node *const &parent, const float_t &g, const NodeType &type, const int_t &dx)
         {
-            return &nodes.emplace_front(this, parent, g, h, type, dx);
+            return &nodes.emplace_front(this, parent, g, type, dx);
         }
     };
     struct Node
     {
-        V2 ray_pos, ray_neg;
+        V2 ray_pos = {0, 0}, ray_neg = {0, 0};
         Corner *const crn = nullptr;
         Node *parent = nullptr, *openlist_next = nullptr, *openlist_prev = nullptr;
         float_t f = INF, g = INF, h = INF;
@@ -44,8 +44,8 @@ namespace P2D::ANYA2
         // root key
         NodeType type = NodeType::Flat;
 
-        Node(Corner *const &crn, Node *const &parent, const float_t &g, const float_t &h, const NodeType &type, const int_t &dx)
-            : crn(crn), parent(parent), f(g + h), g(g), h(h), dx(dx), type(type) {}
+        Node(Corner *const &crn, Node *const &parent, const float_t &g, const NodeType &type, const int_t &dx)
+            : crn(crn), parent(parent), g(g), dx(dx), type(type) {}
     };
 
     struct Boundary

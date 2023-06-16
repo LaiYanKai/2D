@@ -77,5 +77,9 @@
         "forward_list": "cpp"
     },
     "cmake.configureOnOpen": true,
-    "C_Cpp.errorSquiggles": "enabled"
+    "C_Cpp.errorSquiggles": "enabled",
+    "[python]": {
+        "editor.defaultFormatter": "ms-python.black-formatter"
+    },
+    "python.formatting.provider": "none"
 }

@@ -48,6 +48,7 @@ namespace P2D::ANYA2
             node->f = node->g + node->h;
         }
 
+        template <bool from_start>
         inline void expandFlat(Node *const &node, const V2 &p_goal, std::vector<V2> &path)
         { // expand until cannot proceed anymore is reached
             _dbgtitle("[Flat] Node { " << node << " }");
@@ -69,15 +70,23 @@ namespace P2D::ANYA2
             Corner *crn_above = nullptr, *crn_below = nullptr;
             bool is_oc_above_prev = false;
             bool is_oc_below_prev = false;
-            if (node->dx > 0)
-            {
+            if constexpr (from_start)
+            { // for start case
                 crn_above = node->crn;
-                is_oc_below_prev = true;
+                crn_below = node->crn;
             }
             else
             {
-                crn_below = node->crn;
-                is_oc_above_prev = true;
+                if (node->dx > 0)
+                {
+                    crn_above = node->crn;
+                    is_oc_below_prev = true;
+                }
+                else
+                {
+                    crn_below = node->crn;
+                    is_oc_above_prev = true;
+                }
             }
 
             // move in sgn_y by one unit
@@ -120,10 +129,10 @@ namespace P2D::ANYA2
                     Corner *&crn = sgn_x > 0 ? crn_above : crn_below;
 
                     if (is_oc == true && is_oc_prev == false)
-                    {
+                    { // expansion is going from free  cell to  occupied cell
                         assert(crn != nullptr);
 
-                        if (node->type == NodeType::Flat)
+                        if (from_start == false && node->type == NodeType::Flat)
                         { // have not converted the flat node to cone node
                             assert(sgn(node->dx) == sgn_x);
                             Ray &ray_to = sgn_y > 0 ? node->ray_pos : node->ray_neg;
@@ -159,10 +168,20 @@ namespace P2D::ANYA2
                             _dbg11("[Flat] <<<<<< [QUEUE] New Cone node {" << new_cone << "}");
                         }
                         crn = nullptr;
-                        is_oc_prev = is_oc;
+
+                        if constexpr (diag_block == true)
+                        {
+                            _dbg11("[Flat] Encountered checkerboard corner. Stop expansion");
+                            if (sgn_x > 0 ? (is_oc_below == false && is_oc_below_prev == true) : (is_oc_above == false && is_oc_above_prev == true))
+                            { // checkerboard.
+                                crn_above = nullptr;
+                                crn_below = nullptr;
+                                to_stop = true;
+                            }
+                        }
                     }
                     else if (is_oc == false && is_oc_prev == true)
-                    {
+                    { // expansion is going from occupied cell to free cell
                         assert(crn == nullptr);
                         V2 pv(x, y);
                         kv = grid->coordtoKey<false>(pv);
@@ -178,9 +197,10 @@ namespace P2D::ANYA2
                         {
                             crn->min_g = new_g; // update min g cost
                         }
-                        is_oc_prev = is_oc;
                     }
                 }
+                is_oc_above_prev = is_oc_above;
+                is_oc_below_prev = is_oc_below;
 
             } while (to_stop == false || crn_above != nullptr || crn_below != nullptr);
         }
@@ -621,10 +641,7 @@ namespace P2D::ANYA2
         }
 
     public:
-        ANYA2(Grid *const &grid) : grid(grid), los(grid)
-        {
-            setup();
-        }
+        ANYA2(Grid *const &grid) : grid(grid), los(grid) {}
         ANYA2 &operator=(const ANYA2 &) = delete; // Disallow copying
         ANYA2(const ANYA2 &) = delete;
         ~ANYA2() {}
@@ -634,35 +651,39 @@ namespace P2D::ANYA2
             mapkey_t k_start = grid->coordToKey<false>(p_start);
             mapkey_t k_goal = grid->coordToKey<false>(p_goal);
 
-            // ===== Create start and goal nodes =======
-            // open_list.queue(node);
+            Corner *crn_start = crns.try_emplace(k_start, p_start);
+            Node *node_start_pos = crn_start->emplaceNode(nullptr, 0, NodeType::Flat, 0);
+            node_start_pos->ray_neg = V2(1, 0); // not used, just to indicate direction of flat expansion
+            Node *node_start_neg = crn_start->emplaceNode(nullptr, 0, NodeType::Flat, 0);
+            node_start_neg->ray_pos = V2(1, 0); // not used, just to indicate direction of flat expansion
+
+            // Queue start node
+            open_list.queue(node_start_pos);
+            open_list.queue(node_start_neg);
 
             std::vector<V2> path = {};
             while (true)
             {
                 // ====== Poll Node ======
-                node = open_list.poll();
+                Node *node = open_list.poll();
 
                 // ====== Openlist empty ======
                 if (node == nullptr)
                     break; // no path found;
 
-                // // ====== Path found ======
-                // if (node == node_goal)
-                // {
-                //     do
-                //     {
-                //         path.push_back(node->coord);
-                //         node = node->parent;
-                //     } while (node != node_start);
-                //     path.push_back(p_start);
-                //     break;
-                // }
+                // ======= Flat or Cone node ======
+                if (node->type == NodeType::Cone)
+                    expandCone(node, p_goal, path);
+                else
+                    expandFlat(node, p_goal, path);
+
+                if (path.empty() == false)
+                    break;
             }
 
             // ==== Remove nodes  ====
             open_list.clear();
-            nodes.clear();
+            crns.clear();
 
             return path;
         }

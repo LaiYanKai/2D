@@ -9,7 +9,7 @@ def scenario_num_type(x):
         raise argparse.ArgumentTypeError("All values provided must be >= 0")
     return x
 
-THRES = 1e8
+THRES = 1e-8
 class Scenario:
     id = 0  # starts from 1
     name = ""

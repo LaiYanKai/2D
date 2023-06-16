@@ -1,9 +1,48 @@
+
+# MAP_LIST=(
+#     # "room 16room_000"     
+#     # "room 32room_000"
+#     # "da2 ht_mansion2b"
+#     # "da2 ht_0_hightown"
+#     # "street Denver_2_1024"
+#     # "street NewYork_0_1024"
+#     # "street Shanghai_2_1024"
+#     # "street Shanghai_0_1024"
+#     # "street Sydney_1_1024"
+#     # "bg512 AR0709SR"
+#     # "bg512 AR0504SR"
+#     # "bg512 AR0014SR"
+#     # "bg512 AR0304SR"
+#     # "bg512 AR0702SR"
+#     # "bg512 AR0205SR"
+#     # "bg512 AR0602SR"
+#     # "bg512 AR0603SR" 
+#     # "dao arena"
+#     # "dao hrt201n"
+#     "da2 ca_caverns1"
+#     )
+
+# for MAP_PAIR in "${MAP_LIST[@]}"
+# do
+#     IFS=" " read -r -a pair <<< "${MAP_PAIR}"
+#     MAP_DIR="${pair[0]}"    
+#     MAP_NAME="${pair[1]}"
+#     MAP_PATH=scenarios/$MAP_DIR/$MAP_NAME
+
+#     echo "====== Generating Mesh for $MAP_PAIR ======================" 
+#     ./converter -Lmai -i $MAP_PATH.map.scen -o $MAP_PATH.pfarc --conv=mesh --compute=st 
+# done
+
+
+
 WS=`echo "$( cd "$( dirname "$0" )" && pwd )"`
 echo "Workspace is $WS"
 cd $WS
 
 # make sure to chmod +x the python file and this script
-./P2D/scripts/compare_results.py "$@" 
+FILE="P2D/scripts/compare_results.py"
+chmod +x $FILE
+./$FILE "$@" 
 
 # > show_results.log
 # echo "Output redirected to 'show_results.log'"

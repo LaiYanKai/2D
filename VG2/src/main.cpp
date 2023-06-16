@@ -3,7 +3,7 @@
 #include "P2D/debug.hpp"
 #include "VG2/VG2.hpp"
 
-#define DIAG_BLOCK false
+#define DIAG_BLOCK true
 #define SCEN_NUM 0
 
 int main(int, char **)

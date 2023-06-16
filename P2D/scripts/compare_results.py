@@ -39,13 +39,12 @@ def main():
     with open(args.oracle_file, "r") as oracle_file:
         lines = oracle_file.read().splitlines()
         num_scens = len(lines)
-        oracle_scens = [Scenario()] * num_scens
-            
-        i = 0
-        for scen in oracle_scens:
+        # oracle_scens = [Scenario()] * num_scens
+        for i in range(num_scens):
+            scen = Scenario()
             scen.initFromLine(args.oracle_file.stem, i+1, lines[i])
-            i += 1
-        
+            oracle_scens.append(scen)
+
     if (num_scens == 0):
         print(f"Oracle file '{args.oracle_file}' has no scenarios. No comparisons are done.")
         return
@@ -65,11 +64,11 @@ def main():
             if (num_scens != len(oracle_scens)):
                 print(f"'{other_file_path}' has {num_scens} scenarios but oracle_file has {len(oracle_scens)}. Skip '{other_file_path}'")
             else:
-                scens = [Scenario()] * num_scens
-                i = 0
-                for scen in scens:
-                    scen.initFromLine(other_file_path.stem, i+1, lines[i])
-                    i += 1
+                scens = []
+                for i in range(num_scens):
+                    scen = Scenario()
+                    scen.initFromLine(other_file_path, i+1, lines[i])
+                    scens.append(scen)
                 other_files.append(scens)
                 
 
@@ -77,9 +76,7 @@ def main():
     i = 0
     for oracle_scen in oracle_scens:
         has_diff = False
-        print("scen", oracle_scen.cost, oracle_scen.id)
         for other_scens in other_files:
-            print("Otherscen", other_scens[i].cost)
             if abs(other_scens[i].cost - oracle_scen.cost) > THRES:
                 print (other_scens[i])
                 has_diff = True

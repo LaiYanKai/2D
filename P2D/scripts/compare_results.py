@@ -67,7 +67,7 @@ def main():
                 scens = []
                 for i in range(num_scens):
                     scen = Scenario()
-                    scen.initFromLine(other_file_path, i+1, lines[i])
+                    scen.initFromLine(other_file_path.stem, i+1, lines[i])
                     scens.append(scen)
                 other_files.append(scens)
                 

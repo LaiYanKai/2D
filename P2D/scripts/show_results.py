@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 import sys
 import argparse
 import pathlib
@@ -18,7 +19,7 @@ def main():
         default=0,
     )
     parser.add_argument(
-        "results",
+        "result_file_paths",
         help="Result file location. Can be specified multiple times",
         action="extend",
         nargs="+",
@@ -41,7 +42,7 @@ def main():
         print(f"Showing results for scenario(s): {scens_str}")
 
     # ==================== OPEN FILES ==============================
-    for file_path in args.results:
+    for file_path in args.result_file_paths:
         if file_path.is_dir():
             print(f"'{file_path}' is a directory. Skip.")
             continue
@@ -53,19 +54,15 @@ def main():
         with open(file_path, "r") as file:
             lines = file.read().splitlines()
             print(f"{file_path.stem} has {len(lines)} scenario results")
-            
-            
-            scen_num = 700
-            scen_result = Scenario()
-            scen_result.initFromLine(scen_num, lines[scen_num - 1])
-            print(scen_result)
-            return scen_result
-            if all_scens:
-                pass
-            else:
-                pass
 
+            if all_scens:
+                args.scenarios = range(1, len(lines)+1)
+
+            for scen_num in args.scenarios:
+                scenario = Scenario()
+                scenario.initFromLine(file_path.stem, scen_num, lines[scen_num - 1])
+                print(scenario)
 
 
 if __name__ == "__main__":
-    scen = main()
+    main()

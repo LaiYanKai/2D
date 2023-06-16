@@ -17,7 +17,7 @@ map_pairs = [
     %         "street", "Sydney_1_1024";
     %     "da2", "ht_mansion2b"
     %     "da2", "ht_0_hightown"
-    "da2", "ca_caverns1"
+%     "da2", "ca_caverns1"
     %     "dao", "hrt201n"
     %     "room", "32room_000"
     %     "room", "16room_000"
@@ -199,18 +199,21 @@ sh.MarkerFaceColor = [0,0,0];
 sh.MarkerFaceAlpha = 0.;
 sh.MarkerEdgeAlpha = 0.;
 hold off
+% plot path
+path = [313	283	278	286	274	286	255	283	227	271	215	271	204	283	201	285	193	308	188	313	172	321	161	321	129	281	101	279];
+path = reshape(path, 2, [])'
 
 %
 %
 % % plot path
-% hold on
-% plot(h, path(:,1), path(:,2), '-', 'Color', [0.5,0.5,0.5]);
-% sp = size(path, 1);
-% for i = 1:sp
-%     plot(h, path(i, 1), path(i, 2), '.', 'MarkerSize', 10, 'Color', [0, (sp-i)/sp, i/sp])
-% end
+hold on
+plot(h, path(:,1), path(:,2), '-', 'Color', [0.5,0.5,0.5]);
+sp = size(path, 1);
+for i = 1:sp
+    plot(h, path(i, 1), path(i, 2), '.', 'MarkerSize', 10, 'Color', [0, (sp-i)/sp, i/sp])
+end
 % title(strcat("[", map_pair(2), "] SCEN(" ,num2str(scen), ")"), "Interpreter","none");
-% hold off
+hold off
 %
 % % find limits to zoom into path
 % zt = 10;

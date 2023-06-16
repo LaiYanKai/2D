@@ -33,11 +33,11 @@ namespace P2D
                 // ADJ: adj vertex of vertex; adj cell of cell
                 Relative &ADJ_CELL = ADJS_CELL[dir_idx];
                 ADJ_CELL.coord = dirIdxToDir(dir_idx);
-                ADJ_CELL.key = getRelKey<true>(ADJ_CELL.coord);
+                ADJ_CELL.key = getDiffKey<true>(ADJ_CELL.coord);
 
                 Relative &ADJ_VERT = ADJS_VERT[dir_idx];
                 ADJ_VERT.coord = dirIdxToDir(dir_idx);
-                ADJ_VERT.key = getRelKey<false>(ADJ_VERT.coord);
+                ADJ_VERT.key = getDiffKey<false>(ADJ_VERT.coord);
             }
         }
 
@@ -106,6 +106,19 @@ namespace P2D
 
         template <bool is_cell>
         inline void keyToCoord(const mapkey_t &key, V2 &coord) const { keyToCoord<is_cell>(key, coord.x, coord.y); }
+
+        // returns the difference in key of a point b and point a, where (diff_x, diff_y) = (b - a)
+        // add the returned value to the key of point a using addKeyToRelKey to get the key of point b
+        template <bool is_cell>
+        inline mapkey_t getDiffKey(const int_t &diff_x, const int_t &diff_y) const
+        {
+            const V2 &size = (is_cell) ? size_cell : size_vert;
+            return diff_x * size.y + diff_y;
+        }
+        // returns the difference in key of a point b and point a, where diff = (b - a)
+        // add the returned value to the key of point a using addKeyToRelKey to get the key of point b
+        template <bool is_cell>
+        inline mapkey_t getDiffKey(const V2 &diff) const { return getDiffKey<is_cell>(diff.x, diff.y); }
 
         // returns key in dir_x and dir_y, direction.
         template <bool is_cell>
@@ -228,7 +241,7 @@ namespace P2D
                 rel_key_vert = (size_vert.y + cell_x);
             }
 
-            return rel_key_vert ;
+            return rel_key_vert;
         }
 
         // returns relative vertex coord (rel_x, rel_Y) in dir_idx (1,3,5,7) from cell
@@ -273,7 +286,6 @@ namespace P2D
             vert_key = addKeyToRelKey(cell_key, getVertexRelKey(dir_idx, cell_coord.x));
             vert_coord = cell_coord + getVertexRelCoord(dir_idx);
         }
-
 
         template <bool is_cell>
         inline int_t getBoundary(const dir_idx_t &dir_idx) const

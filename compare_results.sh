@@ -42,7 +42,5 @@ cd $WS
 # make sure to chmod +x the python file and this script
 FILE="P2D/scripts/compare_results.py"
 chmod +x $FILE
-./$FILE "$@" 
-
-# > show_results.log
-# echo "Output redirected to 'show_results.log'"
+./$FILE "$@" > compare_results.log
+echo "Output redirected to 'compare_results.log'"

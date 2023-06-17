@@ -2,7 +2,7 @@
 clear all; close all; clc
 
 algo = "VG2B";
-scen = 1300;
+scen = 500;
 
 % map_pair = ["dao", "arena"];
 map_pair = ["da2", "lt_0_lowtown_a3_n_c"];

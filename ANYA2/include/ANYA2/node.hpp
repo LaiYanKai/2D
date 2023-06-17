@@ -34,6 +34,7 @@ namespace P2D::ANYA2
             return &nodes.emplace_front(this, parent, g, type, dx);
         }
     };
+
     struct Node
     {
         V2 ray_pos = {0, 0}, ray_neg = {0, 0};
@@ -51,7 +52,9 @@ namespace P2D::ANYA2
         friend std::ostream &operator<<(std::ostream &out, Node const &node)
         {
             const V2 &root = node.crn->coord;
-            out << "<";
+            out << "<N";
+            out << get_addr((void *)&node);
+            out << "|";
             out << (node.type == NodeType::Flat ? "F" : "C");
             out << ":";
             out << root << ">";

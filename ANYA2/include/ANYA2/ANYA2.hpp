@@ -27,18 +27,21 @@ namespace P2D::ANYA2
 
                 assert(sgn(node->dx) * det(node->ray_pos, node->ray_neg) < 0);
 
-                int_t v_gfr = p_goal - node->crn->coord;
+                const V2 &root = node->crn->coord;
+                V2 v_gfr = p_goal - root;
                 if (sgn(node->dx) * det(v_gfr, node->ray_pos) < 0)
                 { // h cost has to detour around node->ray_pos
+                    V2f rootf(root);
                     V2f vert_pos(node->dx, float_t(node->dx) * node->ray_pos.y / node->ray_pos.x);
-                    vert_pos += node->crn->coord;
-                    node->h = norm<float_t>(p_goal, vert_pos) + norm<float_t>(vert_pos, node->crn->coord);
+                    vert_pos += rootf;
+                    node->h = norm(V2f(p_goal), vert_pos) + norm(vert_pos, rootf);
                 }
                 else if (sgn(node->dx) * det(node->ray_neg, v_gfr) > 0)
                 { // h cost has to detour around node->ray_neg
+                    V2f rootf(root);
                     V2f vert_neg(node->dx, float_t(node->dx) * node->ray_neg.y / node->ray_neg.x);
-                    vert_neg += node->crn->coord;
-                    node->h = norm<float_t>(p_goal, vert_neg) + norm<float_t>(vert_neg, node->crn->coord);
+                    vert_neg += rootf;
+                    node->h = norm(V2f(p_goal), vert_neg) + norm(vert_neg, rootf);
                 }
                 else // calculate h-cost directly
                     node->h = norm(p_goal, node->crn->coord);
@@ -58,13 +61,12 @@ namespace P2D::ANYA2
             int_t y = root.y;
             int_t x = root.x;
             const int_t sgn_y = node->ray_neg == 0 ? -1 : 1;
-            dir_idx_t di = dirIdxToDir(0, sgn_y);
+            dir_idx_t di = dirToDirIdx(0, sgn_y);
             int_t last_y = grid->getBoundary<false>(di);
-            mapkey_t rkv = grid->getRelKey<false>(di);
             mapkey_t rkc = grid->getRelKey<true>(di);
-            di = dirIdxToDir(1, sgn_y);
+            di = dirToDirIdx(1, sgn_y);
             mapkey_t kc_above = grid->addKeyToRelKey(kv, grid->getCellRelKey(di, x));
-            di = dirIdxToDir(-1, sgn_y);
+            di = dirToDirIdx(-1, sgn_y);
             mapkey_t kc_below = grid->addKeyToRelKey(kv, grid->getCellRelKey(di, x));
 
             Corner *crn_above = nullptr, *crn_below = nullptr;
@@ -135,7 +137,7 @@ namespace P2D::ANYA2
                         if (from_start == false && node->type == NodeType::Flat)
                         { // have not converted the flat node to cone node
                             assert(sgn(node->dx) == sgn_x);
-                            Ray &ray_to = sgn_y > 0 ? node->ray_pos : node->ray_neg;
+                            V2 &ray_to = sgn_y > 0 ? node->ray_pos : node->ray_neg;
                             ray_to = V2(sgn_x, y - crn->coord.y);
 
                             node->type = NodeType::Cone;
@@ -184,19 +186,17 @@ namespace P2D::ANYA2
                     { // expansion is going from occupied cell to free cell
                         assert(crn == nullptr);
                         V2 pv(x, y);
-                        kv = grid->coordtoKey<false>(pv);
+                        kv = grid->coordToKey<false>(pv);
                         crn = crns.try_emplace(kv, pv);
                         float_t new_g = node->g + y - root.y;
-                        if (new_crn->min_g < new_g)
+                        if (crn->min_g < new_g)
                         { // new_g is > minimum g at crn. stop flat node expansion
-                            _dbg11("[Flat] Prepare to stop Flat Node search: New G$(" << new_g << ") from flat node root is >= crn min G$(" << new_crn->min_g << ")");
+                            _dbg11("[Flat] Prepare to stop Flat Node search: New G$(" << new_g << ") from flat node root is >= crn min G$(" << crn->min_g << ")");
                             crn = nullptr;
                             to_stop = true;
                         }
                         else
-                        {
                             crn->min_g = new_g; // update min g cost
-                        }
                     }
                 }
                 is_oc_above_prev = is_oc_above;
@@ -211,24 +211,32 @@ namespace P2D::ANYA2
             _dbginc;
             assert(node->dx != 0);
             const V2 &root = node->crn->coord;
+            const int_t &dx = node->dx;
+
+            // ====================== Calculate coordinates and keys at boundaries ======================
+            Boundary boundary_neg(node->ray_neg, -1);
+            Boundary boundary_pos(node->ray_pos, 1);
+            for (Boundary *const &b : {&boundary_neg, &boundary_pos})
+            {
+                b->pv_cur = V2(dx, dx * b->ray.y / b->ray.x) + root;
+                b->kv_cur = grid->coordToKey<false>(b->pv_cur);
+            }
 
             // requires rays and dx to be resolved for current interval at dx.
             // ====================== Check if node's expanded interval intersects goal =============================
             if (node->dx + root.x == p_goal.x)
             {
-                V2 y_gfr = p_goal.y - root.y; // y of vector goalFromRoot
+                int_t y_gfr = p_goal.y - root.y; // y of vector goalFromRoot
                 bool found_goal;
-                const Ray &ray_neg = node->ray_neg;
-                if (ray_neg.dy <= 0)                  // ray is going to -y or no change in y from root
-                    found_goal = y_gfr >= ray_neg.dy; // the result of quotient (dx * ray.y / ray.x) is in +y direction of or on true value
-                else                                  // ray is going to +y from root
-                    found_goal = y_gfr > ray_neg.dy;  // the result of quotient is in -y direction of true value
+                if (boundary_neg.ray_dir >= 0)                   // ray is going to -y or no change in y from root
+                    found_goal = y_gfr >= boundary_neg.pv_cur.y; // the result of quotient (dx * ray.y / ray.x) is in +y direction of or on true value
+                else                                             // ray is going to +y from root
+                    found_goal = y_gfr > boundary_neg.pv_cur.y;  // the result of quotient is in -y direction of true value
 
-                const Ray &ray_pos = node->ray_pos;
-                if (ray_pos.dy >= 0)                   // ray is going to +y or no change in y from root
-                    found_goal &= y_gfr <= ray_pos.dy; // result of quotient is in -y direction of or on true value
-                else                                   // ray is going to -y from root
-                    found_goal &= y_gfr < ray_pos.dy;  // the result of quotient is in +y direction of true value
+                if (boundary_pos.ray_dir >= 0)                    // ray is going to +y or no change in y from root
+                    found_goal &= y_gfr <= boundary_pos.pv_cur.y; // result of quotient is in -y direction of or on true value
+                else                                              // ray is going to -y from root
+                    found_goal &= y_gfr < boundary_pos.pv_cur.y;  // the result of quotient is in +y direction of true value
 
                 if (found_goal == true)
                 { // terminate and find path if goal intersects interval
@@ -246,9 +254,7 @@ namespace P2D::ANYA2
             }
 
             // ======== Check if the next interval is out of map =============
-            const int_t &dx = node->dx;
             const int_t x = node->dx + root.x;
-
             if (x == 0 || x == grid->getSize<true>().x)
             {
                 _dbg11("[Cone] Next Interval is out of map ");
@@ -260,37 +266,32 @@ namespace P2D::ANYA2
 
             // ====================== Add Turning Points on both (+y and -y) sides ======================
             // get the y rounded-to-zero (r2z) vertices near the edge of the current and next intervals
-            Boundary boundary_neg(node->ray_neg, -1);
-            Boundary boundary_pos(node->ray_pos, 1);
 
             bool has_flat_successors = false;
-            for (Boundary &b : {boundary_neg, boundary_pos})
+            for (Boundary *const &b : {&boundary_neg, &boundary_pos})
             {
-                b.pv_cur = V2(dx, dx * b.ray.y / b.ray.x) + root;
-                b.kv_cur = grid->coordToKey<false>(b.pv_cur);
-
-                if (b.ray_dir >= 0)
+                if (b->ray_dir >= 0)
                 { // (ray is perpendicular or has tail interval)
                     V2 pc;
                     mapkey_t kc;
 
                     // check +dx, +sgn_y cell
-                    dir_idx_t di = dirToDirIdx(dx, b.sgn_y);
-                    grid->getCellKeyAndCoord(di, b.kv_cur, b.pv_cur, kc, pc);
+                    dir_idx_t di = dirToDirIdx(dx, b->sgn_y);
+                    grid->getCellKeyAndCoord(di, b->kv_cur, b->pv_cur, kc, pc);
                     if (grid->isAccessible(kc, pc) == true)
                     { // +dx, +sgn_y cell is free
 
                         // check -dx, +sgn_y cell
-                        di = dirToDirIdx(-dx, sgn_y);
-                        grid->getCellKeyAndCoord(di, b.kv_cur, b.pv_cur, kc, pc);
+                        di = dirToDirIdx(-dx, b->sgn_y);
+                        grid->getCellKeyAndCoord(di, b->kv_cur, b->pv_cur, kc, pc);
                         if (grid->isAccessible(kc, pc) == false)
                         { // -dx, +sgn_y cell is occupied
 
                             bool create_flat = true;
                             if constexpr (diag_block == true)
                             { // check +dx, -sgn_y cell
-                                di = dirToDirIdx(dx, -sgn_y);
-                                grid->getCellKeyAndCoord(di, b.kv_cur, b.pv_cur, kc, pc);
+                                di = dirToDirIdx(dx, -b->sgn_y);
+                                grid->getCellKeyAndCoord(di, b->kv_cur, b->pv_cur, kc, pc);
                                 // create flat if +dx, +y cell is free
                                 create_flat = grid->isAccessible(kc, pc) == true;
                             }
@@ -298,21 +299,21 @@ namespace P2D::ANYA2
                             if (create_flat == true)
                             {
                                 has_flat_successors = true;
-                                Corner *new_crn = crns.try_emplace(b.kv_cur, b.pv_cur);
-                                float_t new_g = node->g + norm(b.pv_cur, root);
+                                Corner *new_crn = crns.try_emplace(b->kv_cur, b->pv_cur);
+                                float_t new_g = node->g + norm(b->pv_cur, root);
                                 if (new_crn->min_g > new_g)
                                 {
                                     new_crn->min_g = new_g;
                                     Node *new_node = node->crn->emplaceNode(node, new_g, NodeType::Flat, sgn(dx));
-                                    if (b.sgn_y < 0)
+                                    if (b->sgn_y < 0)
                                     {
                                         assert(new_node->ray_neg == 0);
-                                        new_node->ray_pos = b.pv_cur - root;
+                                        new_node->ray_pos = b->pv_cur - root;
                                     }
                                     else
                                     {
                                         assert(new_node->ray_pos == 0);
-                                        new_node->ray_neg = b.pv_cur - root;
+                                        new_node->ray_neg = b->pv_cur - root;
                                     }
                                     updateHCost(new_node, p_goal);
                                     open_list.queue(new_node);
@@ -320,7 +321,7 @@ namespace P2D::ANYA2
                                 }
                                 else
                                 {
-                                    _dbg11("[Cone] Flat node cannot be created at Vert(" << b.pv_cur << ") bcos new G$(" << new_g << ") >= cur G$(" << new_crn->min_g << ")");
+                                    _dbg11("[Cone] Flat node cannot be created at Vert(" << b->pv_cur << ") bcos new G$(" << new_g << ") >= cur G$(" << new_crn->min_g << ")");
                                 }
 
                             } // create flat
@@ -335,8 +336,8 @@ namespace P2D::ANYA2
                 if (b.ray_dir > 0)
                 { // has tail
                     // determine first cell by taking y of next row
-                    int_t y_next = dx_next * b.ray->vec.y / b.ray->vec.x + root.y; // r2z coordinate (r2z is in +y direction)
-                    --y_next;                                                      // to get the corresponding vertex at +dx +y of cell
+                    int_t y_next = dx_next * b.ray.y / b.ray.x + root.y; // r2z coordinate (r2z is in +y direction)
+                    --y_next;                                            // to get the corresponding vertex at +dx +y of cell
                     const int_t y_map_bound = 0;
                     b.pv_bound = V2(b.pv_cur.x, (y_next < y_map_bound) ? y_map_bound : y_next);
                     b.kv_bound = grid->coordToKey<false>(b.pv_bound);
@@ -353,13 +354,13 @@ namespace P2D::ANYA2
             }
             {
                 Boundary &b = boundary_pos;
-                assert(b.kv_cur == grid->coordToKey(b.pv_cur));
+                assert(b.kv_cur == grid->coordToKey<false>(b.pv_cur));
 
                 if (b.ray_dir > 0)
                 { // has tail
                     // determine first cell by taking y of next row
-                    int_t y_next = dx_next * b.ray->vec.y / b.ray->vec.x + root.y; // r2z coordinate (r2z is in -y direction)
-                    ++y_next;                                                      // so that the boundary lies outside of the sec
+                    int_t y_next = dx_next * b.ray.y / b.ray.x + root.y; // r2z coordinate (r2z is in -y direction)
+                    ++y_next;                                            // so that the boundary lies outside of the sec
                     const int_t y_map_bound = grid->getBoundary<false>(2);
                     b.pv_bound = V2(b.pv_cur.x, (y_next > y_map_bound) ? y_map_bound : y_next);
                     b.kv_bound = grid->coordToKey<false>(b.pv_bound);
@@ -378,9 +379,9 @@ namespace P2D::ANYA2
             // ---------- Scan cell interval --------------
             std::vector<Interval> intervals;
             {
-                const int_t &y_last = boundary_pos.pv_bound.y;
+                const int_t &last_y = boundary_pos.pv_bound.y;
                 int_t y = boundary_neg.pv_bound.y;
-                mapkey_t kc = grid->boundary_neg.kc_bound;
+                mapkey_t kc = boundary_neg.kc_bound;
                 const mapkey_t &rkc = grid->getRelKey<true>(2);
                 bool scan_oc = true;
                 while (1)
@@ -466,7 +467,7 @@ namespace P2D::ANYA2
                 {
                     diff_pos.x = dx_next;
                     vert_pos.x = x_next;
-                    assert(node->ray_pos.vec.y > 0);
+                    assert(node->ray_pos.y > 0);
                     if (sgn(dx) * det(diff_pos, node->ray_pos) <= 0)
                     { // interval pos vertex lies outside of node's positive ray
                         diff_pos = node->ray_pos;
@@ -649,19 +650,18 @@ namespace P2D::ANYA2
         std::vector<V2> run(const V2 &p_start, const V2 &p_goal)
         {
             mapkey_t k_start = grid->coordToKey<false>(p_start);
-            mapkey_t k_goal = grid->coordToKey<false>(p_goal);
-
             Corner *crn_start = crns.try_emplace(k_start, p_start);
+            crn_start->min_g = 0;
             Node *node_start_pos = crn_start->emplaceNode(nullptr, 0, NodeType::Flat, 0);
             node_start_pos->ray_neg = V2(1, 0); // not used, just to indicate direction of flat expansion
             Node *node_start_neg = crn_start->emplaceNode(nullptr, 0, NodeType::Flat, 0);
             node_start_neg->ray_pos = V2(1, 0); // not used, just to indicate direction of flat expansion
 
-            // Queue start node
-            open_list.queue(node_start_pos);
-            open_list.queue(node_start_neg);
-
+            // Expand flat nodes and find cone nodes from start
             std::vector<V2> path = {};
+            expandFlat<true>(node_start_pos, p_goal, path);
+            expandFlat<true>(node_start_neg, p_goal, path);
+
             while (true)
             {
                 // ====== Poll Node ======
@@ -675,7 +675,7 @@ namespace P2D::ANYA2
                 if (node->type == NodeType::Cone)
                     expandCone(node, p_goal, path);
                 else
-                    expandFlat(node, p_goal, path);
+                    expandFlat<false>(node, p_goal, path);
 
                 if (path.empty() == false)
                     break;

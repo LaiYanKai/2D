@@ -16,8 +16,8 @@ namespace P2D
         T x, y;
         Vec2(const T &x, const T &y) : x(x), y(y) {}
         Vec2() : Vec2(0, 0){};
-        // template <typename U>
-        // Vec2(const U &vec) : Vec2(vec[0], vec[1]) {}
+        template <typename U>
+        Vec2(const U &vec) : Vec2(vec[0], vec[1]) {}
 
         T &operator[](size_t dim) { return dim == 0 ? x : y; }
         const T &operator[](size_t dim) const { return dim == 0 ? x : y; }
@@ -371,11 +371,9 @@ namespace P2D
     }
 
     template <typename T, typename U>
-    U norm(const Vec2<T> &vec1, const Vec2<T> &vec2)
-    {
-        return std::sqrt(normSq<T, U>(vec1, vec2));
-    }
+    U norm(const Vec2<T> &vec1, const Vec2<T> &vec2) { return std::sqrt(normSq<T, U>(vec1, vec2)); }
     inline float_t norm(const V2 &lhs, const V2 &rhs) { return norm<int_t, float_t>(lhs, rhs); }
+    inline float_t norm(const V2f &lhs, const V2f &rhs) { return norm<float_t, float_t>(lhs, rhs); }
 
     template <bool is_strict = false>
     std::pair<long_t, bool> isLeft(const V2 &v_left, const V2 &v_right)
@@ -407,8 +405,8 @@ namespace P2D
             return NAN;
 
         U cost = 0;
-        for (auto coord = path.begin() + 1; coord != path.end(); ++coord)
-            cost += norm<T, U>(*(coord - 1), *coord);
+        for (auto coord_ = std::next(path.begin()); coord_ != path.end(); ++coord_)
+            cost += norm<T, U>(*std::prev(coord_), *coord_);
         return cost;
     }
 

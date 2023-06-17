@@ -1,6 +1,7 @@
 #include <vector>
 #include <unordered_map>
 #include <forward_list>
+#include <ostream>
 #include "P2D/P2D.hpp"
 
 #pragma once
@@ -28,7 +29,7 @@ namespace P2D::ANYA2
 
         Corner(const mapkey_t &key, const V2 &coord) : coord(coord), key(key){};
 
-        inline Node *const &emplaceNode(Node *const &parent, const float_t &g, const NodeType &type, const int_t &dx)
+        inline Node *emplaceNode(Node *const &parent, const float_t &g, const NodeType &type, const int_t &dx)
         {
             return &nodes.emplace_front(this, parent, g, type, dx);
         }
@@ -46,7 +47,43 @@ namespace P2D::ANYA2
 
         Node(Corner *const &crn, Node *const &parent, const float_t &g, const NodeType &type, const int_t &dx)
             : crn(crn), parent(parent), g(g), dx(dx), type(type) {}
+
+        friend std::ostream &operator<<(std::ostream &out, Node const &node)
+        {
+            const V2 &root = node.crn->coord;
+            out << "<";
+            out << (node.type == NodeType::Flat ? "F" : "C");
+            out << ":";
+            out << root << ">";
+
+            out << ", dx(" << node.dx << ")";
+
+            if (node.parent == nullptr)
+                out << ", par(    NA     )";
+            else
+                out << ", par(" << node.parent->crn->coord << ")";
+
+            V2f pv_neg = V2f(node.dx, float_t(node.dx) * node.ray_neg.y / node.ray_neg.x) + V2f(root);
+            V2f pv_pos = V2f(node.dx, float_t(node.dx) * node.ray_pos.y / node.ray_pos.x) + V2f(root);
+            out << ", itv[calc](" << pv_neg << "; " << pv_pos << ")";
+
+            out << ", ray(" << node.ray_neg;
+            out << ";" << node.ray_pos << ")";
+
+            out << ", F$(" << node.f << ")";
+            out << ", G$(" << node.g << ")";
+            out << ", H$(" << node.h << ")";
+            return out;
+        }
     };
+    inline std::ostream &operator<<(std::ostream &out, const Node *const &node)
+    {
+        if (node == nullptr)
+            out << "    NANode     ";
+        else
+            out << *node;
+        return out;
+    }
 
     struct Boundary
     {

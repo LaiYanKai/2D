@@ -15,8 +15,8 @@ namespace P2D::ANYA2
 
     struct Interval
     {
-        V2 coord_pos = {-1, -1}, coord_neg = {-1, -1}, ray_pos, ray_neg;
-        Interval(const V2 &coord_neg, const V2 &ray_neg) : coord_neg(coord_neg), ray_neg(ray_neg) {}
+        V2 neg_ray = {0,0}, pos_ray = { 0,0};
+        Interval(const V2 &neg_ray, const V2 &pos_ray) : neg_ray(neg_ray), pos_ray(pos_ray) {}
     };
 
     struct Node;
@@ -33,7 +33,7 @@ namespace P2D::ANYA2
 
     struct Node
     {
-        V2 ray_pos = {0, 0}, ray_neg = {0, 0};
+        V2 pos_ray = {0, 0}, neg_ray = {0, 0};
         Corner *const crn = nullptr;
         Node *parent = nullptr, *openlist_next = nullptr, *openlist_prev = nullptr;
         float_t f = INF, g = INF, h = INF;
@@ -62,12 +62,12 @@ namespace P2D::ANYA2
             else
                 out << ", par(" << node.parent->crn->coord << ")";
 
-            V2f pv_neg = V2f(node.dx, float_t(node.dx) * node.ray_neg.y / node.ray_neg.x) + V2f(root);
-            V2f pv_pos = V2f(node.dx, float_t(node.dx) * node.ray_pos.y / node.ray_pos.x) + V2f(root);
+            V2f pv_neg = V2f(node.dx, float_t(node.dx) * node.neg_ray.y / node.neg_ray.x) + V2f(root);
+            V2f pv_pos = V2f(node.dx, float_t(node.dx) * node.pos_ray.y / node.pos_ray.x) + V2f(root);
             out << ", itv[calc](" << pv_neg << "; " << pv_pos << ")";
 
-            out << ", ray(" << node.ray_neg;
-            out << ";" << node.ray_pos << ")";
+            out << ", ray(" << node.neg_ray;
+            out << ";" << node.pos_ray << ")";
 
             out << ", F$(" << node.f << ")";
             out << ", G$(" << node.g << ")";
@@ -90,6 +90,7 @@ namespace P2D::ANYA2
         Cone(Node *const &node) : node(node) { assert(node->dx != 0); }
         inline const V2 &root() const { return node->crn->coord; }
         inline const int_t &dx() const { return node->dx; }
+        inline int_t &dx() { return node->dx; }
         inline int_t sgnX() const
         {
             assert(this->dx() != 0);
@@ -98,9 +99,12 @@ namespace P2D::ANYA2
         inline int_t dxNext() const { return dx() + sgnX(); }
         inline int_t x() const { return root().x + dx(); }
         inline int_t xNext() const { return root().x + dxNext(); }
-        inline const V2 &negRay() const { return node->ray_neg; }
-        inline const V2 &posRay() const { return node->ray_neg; }
+        inline const V2 &negRay() const { return node->neg_ray; }
+        inline V2 &negRay() { return node->neg_ray; }
+        inline const V2 &posRay() const { return node->neg_ray; }
+        inline V2 &posRay() { return node->pos_ray; }
         inline const V2 &ray(const int_t &sgn_y) const { return sgn_y < 0 ? negRay() : posRay(); }
+        inline V2 &ray(const int_t &sgn_y) { return sgn_y < 0 ? negRay() : posRay(); }
 
         inline int_t rayY(const int_t &dx, V2 const &ray) const { return dx * ray.y / ray.x; }
         inline float_t rayYf(const int_t &dx, V2 const &ray) const { return float_t(dx) * ray.y / ray.x; }

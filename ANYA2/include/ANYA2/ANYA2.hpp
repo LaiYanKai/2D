@@ -46,25 +46,25 @@ namespace P2D::ANYA2
                     _dbg11("[HCost] Reflect goal around interval to (" << p_goal << ")");
                 }
 
-                assert(sgn(node->dx) * det(node->ray_pos, node->ray_neg) < 0);
+                assert(sgn(node->dx) * det(node->pos_ray, node->neg_ray) < 0);
 
                 const V2 &root = node->crn->coord;
                 V2 v_gfr = p_goal - root;
-                if (sgn(node->dx) * det(v_gfr, node->ray_pos) < 0)
-                { // h cost has to detour around node->ray_pos
+                if (sgn(node->dx) * det(v_gfr, node->pos_ray) < 0)
+                { // h cost has to detour around node->pos_ray
                     V2f rootf(root);
-                    V2f vert_pos(node->dx, float_t(node->dx) * node->ray_pos.y / node->ray_pos.x);
+                    V2f vert_pos(node->dx, float_t(node->dx) * node->pos_ray.y / node->pos_ray.x);
                     vert_pos += rootf;
                     node->h = norm(V2f(p_goal), vert_pos) + norm(vert_pos, rootf);
-                    _dbg11("[HCost] Detour around +Ray (" << node->ray_pos << ") at vertex coordinate(" << vert_pos << ")");
+                    _dbg11("[HCost] Detour around +Ray (" << node->pos_ray << ") at vertex coordinate(" << vert_pos << ")");
                 }
-                else if (sgn(node->dx) * det(node->ray_neg, v_gfr) < 0)
-                { // h cost has to detour around node->ray_neg
+                else if (sgn(node->dx) * det(node->neg_ray, v_gfr) < 0)
+                { // h cost has to detour around node->neg_ray
                     V2f rootf(root);
-                    V2f vert_neg(node->dx, float_t(node->dx) * node->ray_neg.y / node->ray_neg.x);
+                    V2f vert_neg(node->dx, float_t(node->dx) * node->neg_ray.y / node->neg_ray.x);
                     vert_neg += rootf;
                     node->h = norm(V2f(p_goal), vert_neg) + norm(vert_neg, rootf);
-                    _dbg11("[HCost] Detour around -Ray (" << node->ray_neg << ") at vertex coordinate(" << vert_neg << ")");
+                    _dbg11("[HCost] Detour around -Ray (" << node->neg_ray << ") at vertex coordinate(" << vert_neg << ")");
                 }
                 else // calculate h-cost directly
                     node->h = norm(p_goal, node->crn->coord);
@@ -84,7 +84,7 @@ namespace P2D::ANYA2
             _dbginc;
             mapkey_t kv = node->crn->key;
             int_t x = root.x;
-            const int_t sgn_y = node->ray_neg == 0 ? -1 : 1;
+            const int_t sgn_y = node->neg_ray == 0 ? -1 : 1;
             dir_idx_t di = dirToDirIdx(0, sgn_y);
             int_t last_y = grid->getBoundary<false>(di);
             mapkey_t rcell_key = grid->getRelKey<true>(di);
@@ -177,11 +177,11 @@ namespace P2D::ANYA2
                         { // have not converted the flat node to cone node
 
                             assert(from_start == true || sgn(node->dx) == sgn_x);
-                            V2 &ray_to = sgn_y > 0 ? node->ray_pos : node->ray_neg;
+                            V2 &ray_to = sgn_y > 0 ? node->pos_ray : node->neg_ray;
                             ray_to = V2(sgn_x, y - crn->coord.y);
 
                             node->type = NodeType::Cone;
-                            if (sgn_x * det(node->ray_neg, node->ray_pos) <= 0)
+                            if (sgn_x * det(node->neg_ray, node->pos_ray) <= 0)
                                 _dbg11("[Flat:" << y << "] Cannot queue cone node with root at parent node because the next row is inaccessible");
                             else
                             {
@@ -201,13 +201,13 @@ namespace P2D::ANYA2
 
                             if (sgn_y > 0)
                             {
-                                new_cone->ray_neg = V2(sgn_x, 0);
-                                new_cone->ray_pos = V2(sgn_x, y - crn->coord.y);
+                                new_cone->neg_ray = V2(sgn_x, 0);
+                                new_cone->pos_ray = V2(sgn_x, y - crn->coord.y);
                             }
                             else
                             {
-                                new_cone->ray_neg = V2(sgn_x, y - crn->coord.y);
-                                new_cone->ray_pos = V2(sgn_x, 0);
+                                new_cone->neg_ray = V2(sgn_x, y - crn->coord.y);
+                                new_cone->pos_ray = V2(sgn_x, 0);
                             }
                             updateHCost(new_cone, p_goal);
                             open_list.queue(new_cone);
@@ -308,13 +308,13 @@ namespace P2D::ANYA2
                                     Node *new_node = new_crn->emplaceNode(node, new_g, NodeType::Flat, sgn_dx);
                                     if (sgn_y < 0)
                                     {
-                                        assert(new_node->ray_neg == 0);
-                                        new_node->ray_pos = vert_coord - cone.root();
+                                        assert(new_node->neg_ray == 0);
+                                        new_node->pos_ray = vert_coord - cone.root();
                                     }
                                     else
                                     {
-                                        assert(new_node->ray_pos == 0);
-                                        new_node->ray_neg = vert_coord - cone.root();
+                                        assert(new_node->pos_ray == 0);
+                                        new_node->neg_ray = vert_coord - cone.root();
                                     }
                                     updateHCost(new_node, p_goal);
                                     open_list.queue(new_node);
@@ -332,7 +332,6 @@ namespace P2D::ANYA2
             }
             return false;
         }
-
         inline bool expandCone(Node *const &node, const V2 &p_goal, std::vector<V2> &path)
         {
             _dbgtitle("[Cone] Expand Cone Node { " << node << " }");
@@ -365,89 +364,87 @@ namespace P2D::ANYA2
                 // ====================== Add Turning Points on both (+y and -y) sides ======================
                 bool has_flat_successors = _expandConeFlatSuccessors(b_neg, b_pos, node);
 
-                // ====================== Create Interval if first cell is empty ==================
-                std::vector<Interval> intervals;
-                {
-                    V2 vert_coord = cone.negRayCurCoord();
-                    dir_idx_t di = dirToDirIdx(cone.dx(), 1); // check cell in +dx +y direction of r2z coord at neg ray and current row.
-                    V2 cell_coord = vert_coord + grid->getCellRelCoord(di);
-                    if (grid->isAccessible(cell_coord))
-                    { // create free interval bcos the +dx +y cell of the neg-ray r2z-coord is free.
-                        intervals.emplace_back(cell_coord, cone.negRay());
-                    }
-                }
-
-                // ====================== Check left tail if any ===========================
+                // ====================== Determine first and last cell to check for cell row after interval =======================
+                int_t y_begin;
                 if (cone.negRayHasTail() == true)
                 {
-                    bool was_oc = intervals.empty(); // if the cell in +y direction of the neg-ray r2z-coord is occupied, the intervals will be empty
-
-                    V2 vert_coord = cone.negRayCurCoord();
-                    int_t y_end = cone.negRayNextY();
-                    mapkey_t rel_cell_key = grid->getRelKey(6);
-
-                    dir_idx_t di = dirToDirIdx(cone.dx(), -1); // +dx -y cell
-                    V2 cell_coord = vert_coord + grid->getCellRelCoord(di);
-                    mapkey_t cell_key = grid->coordToKey<true>(cell_coord);
-                    while (vert_coord.y >= y_end)
-                    {
-                        // if out of map or cell is occupied, set is_oc to true
-                        bool is_oc = grid->inBoundary<true>(cell_coord.y, 6) == false || grid->isOc(cell_key) == true; 
-
-
-
-                        
-
-                        // go to next cell
-                        --cell_coord.y;
-                        grid->addKeyToRelKey(cell_key, rel_cell_key);
-                    }
+                    y_begin = cone.negRayNextY() - 1;           // so that the cell is always in +dx +y direction of vertex
+                    int_t y_bound = grid->getBoundary<true>(6); // should be zero
+                    if (y_begin < y_bound)
+                        y_begin = y_bound;
                 }
-
-                // ====================== Determine first and last cell to check for cell row after interval =======================
-                // Boundaries contain vertices that lie on or immediately outside the rays, so all cells between the vertices are checked
+                else // neg ray has no tail
+                    y_begin = cone.negRayCurY();
+                int_t y_end;
+                if (cone.posRayHasTail() == true)
                 {
-                    Boundary &b = b_neg;
-                    if (b.ray_dir > 0)
-                    { // has tail
-                        // determine first cell by taking y of next row
-                        int_t y_next = dx_next * b.ray.y / b.ray.x + root.y; // r2z coordinate (r2z is in +y direction)
-                        --y_next;                                            // to get the corresponding vertex at +dx +y of cell
-                        const int_t y_map_bound = 0;
-                        b.pv_bound = V2(b.pv_cur.x, (y_next < y_map_bound) ? y_map_bound : y_next);
-                        b.kv_bound = grid->coordToKey<false>(b.pv_bound);
-                    }
-                    else
-                    { // perpendicular or no tail. determine first cell from current row
-                        b.pv_bound = b.pv_cur;
-                        b.kv_bound = b.kv_cur;
-                    }
-                    dir_idx_t di = dirToDirIdx(dx, 1);
-                    b.cell_key_bound = grid->addKeyToRelKey(b.kv_bound, grid->getCellRelKey(di, b.pv_bound.x));
+                    y_end = cone.posRayNextY() + 1; // to exclude this last vertex
+                    int_t y_bound = grid->getBoundary<true>(2);
+                    if (y_end > y_bound)
+                        y_end = y_bound;
                 }
+                else // pos ray has no tail
+                    y_end = cone.posRayCurY();
+                _dbg11("[Cone] Scan from YBegin(incl., vert)(" << y_begin << ") to YEnd(not incl., vert)(" << y_end << ")");
+                assert(y_end > y_begin); // cannot be opposite under current assumptions
+
+                dir_idx_t di = dirToDirIdx(cone.dx(), 1);
+                V2 vert_coord(cone.x(), y_begin);
+                mapkey_t cell_key = grid->addKeyToRelKey(grid->coordToKey<false>(vert_coord), grid->getCellRelKey(di));
+                mapkey_t rel_cell_key = grid->getRelKey<true>(2);
+
+                std::vector<Interval> intervals;
+                bool scanning_oc = false;
+                // insert interval starting from cone's -ray
+                if (grid->isOc(cell_key) == false)
+                    intervals.emplace_back(cone.negRay(), V2(0, 0));
+
+                while (true)
                 {
-                    Boundary &b = b_pos;
-                    assert(b.kv_cur == grid->coordToKey<false>(b.pv_cur));
+                    ++vert_coord.y;
+                    if (vert_coord.y >= y_end)
+                        break;
+                    cell_key = grid->addKeyToRelKey(cell_key, rel_cell_key);
 
-                    if (b.ray_dir > 0)
-                    { // has tail
-                        // determine first cell by taking y of next row
-                        int_t y_next = dx_next * b.ray.y / b.ray.x + root.y; // r2z coordinate (r2z is in -y direction)
-                        ++y_next;                                            // so that the boundary lies outside of the sec
-                        const int_t y_map_bound = grid->getBoundary<false>(2);
-                        b.pv_bound = V2(b.pv_cur.x, (y_next > y_map_bound) ? y_map_bound : y_next);
-                        b.kv_bound = grid->coordToKey<false>(b.pv_bound);
+                    // occupancy of cell in +dx, +y direction
+                    const bool is_oc = grid->isOc(cell_key);
+
+                    if (scanning_oc == true && is_oc == false)
+                    { // found first free cell after scanning occupied cells. create new interval
+                        // [x] ---(+y)---> [ ]
+                        assert(intervals.empty() == true || intervals.back().pos_ray != 0);
+                        const V2 new_neg_ray = vert_coord - cone.root();
+                        scanning_oc = false;
+
+                        if (new_neg_ray.y <= 0) // ray can point to next row
+                            new_neg_ray.x += cone.sgnX();
+
+                        // if beyond pos_ray, stop scan, don't insert interval
+                        if (cone.sgnX() * det(new_neg_ray, cone.posRay()) <= 0)
+                            break; // later cells will not result in any nodes.
+                        else
+                            intervals.emplace_back(new_neg_ray, V2(0, 0)); // if not beyond pos_ray, insert interval
                     }
-                    else
-                    {                          // perpendicular or no tail. determine first cell from current row
-                        b.pv_bound = b.pv_cur; // lies outside of angular sec
-                        b.kv_bound = b.kv_cur; // lies outside of sec
+                    else if (scanning_oc == false && is_oc == true)
+                    { // found first oc cell after scanning free cells. fill last interval
+                        // [ ] ---(+y)---> [x]
+                        assert(intervals.empty() == false && intervals.back().pos_ray == 0);
+                        const V2 new_pos_ray = vert_coord - cone.root();
+                        scanning_oc = true;
+
+                        if (new_pos_ray.y >= 0) // can point to next row
+                            new_pos_ray += cone.sgnX();
+
+                        // test if beyond ray neg, if it is,  delete interval
+                        if (cone.sgnX() * det(cone.negRay(), new_pos_ray) <= 0)
+                            intervals.pop_back();
+                        else
+                            intervals.back().pos_ray = new_pos_ray;
                     }
                 }
-
-                _dbg11("[Cone] VertexNeg(" << b_neg.pv_bound << ") VertexPos(" << b_pos.pv_bound << ")");
-
-                assert(b_pos.pv_bound.y >= b_neg.pv_bound.y); // cannot be opposite under current assumptions
+                // fill the ray if there is remaining pos_ray
+                if (intervals.empty() == false && intervals.back().pos_ray == 0)
+                    intervals.back().pos_ray = cone.posRay();
 
                 // ---------- Scan cell interval --------------
                 std::vector<Interval> intervals;
@@ -475,7 +472,7 @@ namespace P2D::ANYA2
                             intervals.emplace_back(vert_neg, vert_neg - root);
                             scan_oc = false;
 
-                            // test if beyond ray_pos, if it is, stop scan, don't emplace back
+                            // test if beyond pos_ray, if it is, stop scan, don't emplace back
 
                             // upgrade
                         }
@@ -502,7 +499,7 @@ namespace P2D::ANYA2
                     for (auto itv_ = intervals.begin(); itv_ != intervals.end();)
                     {
                         assert(sgn(itv_->diff_pos.x) == sgn(dx));
-                        if (sgn(dx) * det(node->ray_neg, itv_->diff_pos) <= 0) // interval lies beyond neg ray of node
+                        if (sgn(dx) * det(node->neg_ray, itv_->diff_pos) <= 0) // interval lies beyond neg ray of node
                             itv_ = intervals.erase(itv_);
                         else
                             ++itv_;
@@ -513,7 +510,7 @@ namespace P2D::ANYA2
                     for (auto itv_ = intervals.begin(); itv_ != intervals.end();)
                     {
                         assert(sgn(itv_->diff_neg.x) == sgn(dx));
-                        if (sgn(dx) * det(itv_->diff_neg, node->ray_pos) <= 0)
+                        if (sgn(dx) * det(itv_->diff_neg, node->pos_ray) <= 0)
                             itv_ = intervals.erase(itv_);
                         else
                             ++itv_;
@@ -534,10 +531,10 @@ namespace P2D::ANYA2
                     {
                         diff_neg.x = dx_next;
                         vert_neg.x = x_next;
-                        assert(node->ray_neg.y < 0);
-                        if (sgn(dx) * det(node->ray_neg, diff_neg) <= 0)
+                        assert(node->neg_ray.y < 0);
+                        if (sgn(dx) * det(node->neg_ray, diff_neg) <= 0)
                         { // interval neg vertex lies outside of node's negative ray
-                            diff_neg = node->ray_neg;
+                            diff_neg = node->neg_ray;
                             vert_neg.y = root.y + dx_next * diff_neg.y / diff_neg.x;
                         }
                     }
@@ -552,10 +549,10 @@ namespace P2D::ANYA2
                     {
                         diff_pos.x = dx_next;
                         vert_pos.x = x_next;
-                        assert(node->ray_pos.y > 0);
-                        if (sgn(dx) * det(diff_pos, node->ray_pos) <= 0)
+                        assert(node->pos_ray.y > 0);
+                        if (sgn(dx) * det(diff_pos, node->pos_ray) <= 0)
                         { // interval pos vertex lies outside of node's positive ray
-                            diff_pos = node->ray_pos;
+                            diff_pos = node->pos_ray;
                             vert_pos.y = root.y + dx_next * diff_pos.y / diff_pos.x;
                         }
                     }
@@ -578,14 +575,14 @@ namespace P2D::ANYA2
                             new_crn->min_g = new_g;
                             has_cone_successors = true;
                             Node *new_node = new_crn->emplaceNode(node, new_g, NodeType::Cone, sgn(dx));
-                            new_node->ray_neg = V2(new_node->dx, 0);
+                            new_node->neg_ray = V2(new_node->dx, 0);
 
-                            // adjust ray_pos
-                            new_node->ray_pos = diff_neg;
+                            // adjust pos_ray
+                            new_node->pos_ray = diff_neg;
                             int_t new_y = new_root.y + new_node->dx * diff_neg.y / diff_neg.x;
                             assert(vert_pos.x == x_next);
-                            if (new_y > vert_pos.y) // this is okay bcos vert_pos is not adjusted by the node's ray_pos (bcos ray_pos can't cross ray_neg), so this condition is due to obstacle at vert_pos
-                                new_node->ray_pos = V2(new_node->dx, vert_pos.y - new_root.y);
+                            if (new_y > vert_pos.y) // this is okay bcos vert_pos is not adjusted by the node's pos_ray (bcos pos_ray can't cross neg_ray), so this condition is due to obstacle at vert_pos
+                                new_node->pos_ray = V2(new_node->dx, vert_pos.y - new_root.y);
 
                             // queue
                             updateHCost(new_node, p_goal);
@@ -624,14 +621,14 @@ namespace P2D::ANYA2
                             new_crn->min_g = new_g;
                             has_cone_successors = true;
                             Node *new_node = new_crn->emplaceNode(node, new_g, NodeType::Cone, sgn(dx));
-                            new_node->ray_pos = V2(new_node->dx, 0);
+                            new_node->pos_ray = V2(new_node->dx, 0);
 
-                            // adjust ray_neg
-                            new_node->ray_neg = diff_pos;
+                            // adjust neg_ray
+                            new_node->neg_ray = diff_pos;
                             int_t new_y = new_root.y + new_node->dx * diff_pos.y / diff_pos.x;
                             assert(vert_neg.x == x_next);
-                            if (new_y < vert_neg.y) // this is okay bcos vert_pos is not adjusted by the node's ray_pos (bcos ray_pos can't cross ray_neg), so this condition is due to obstacle at vert_pos
-                                new_node->ray_pos = V2(new_node->dx, vert_neg.y - new_root.y);
+                            if (new_y < vert_neg.y) // this is okay bcos vert_pos is not adjusted by the node's pos_ray (bcos pos_ray can't cross neg_ray), so this condition is due to obstacle at vert_pos
+                                new_node->pos_ray = V2(new_node->dx, vert_neg.y - new_root.y);
 
                             // queue
                             updateHCost(new_node, p_goal);
@@ -679,8 +676,8 @@ namespace P2D::ANYA2
                     _dbginc;
                     Interval &interval = intervals.back();
                     node->dx = dx_next;
-                    node->ray_neg = interval.diff_neg;
-                    node->ray_pos = interval.diff_pos;
+                    node->neg_ray = interval.diff_neg;
+                    node->pos_ray = interval.diff_pos;
                     _dbgdec;
                 } // no flat nodes created and no other successors
                 else
@@ -701,8 +698,8 @@ namespace P2D::ANYA2
                         {
                             Node *new_node = node->crn->emplaceNode(node->parent, node->g, NodeType::Cone, dx_next);
                             new_node->dx = dx_next;
-                            new_node->ray_neg = interval.diff_neg;
-                            new_node->ray_pos = interval.diff_pos;
+                            new_node->neg_ray = interval.diff_neg;
+                            new_node->pos_ray = interval.diff_pos;
                             updateHCost(new_node, p_goal);
                             open_list.queue(new_node);
                             _dbg11("[Cone] <<<<<< [QUEUE] new node at root {" << new_node << "}");
@@ -710,8 +707,8 @@ namespace P2D::ANYA2
                         else
                         {
                             node->dx = dx_next;
-                            node->ray_neg = interval.diff_neg;
-                            node->ray_pos = interval.diff_pos;
+                            node->neg_ray = interval.diff_neg;
+                            node->pos_ray = interval.diff_pos;
                             updateHCost(node, p_goal);
                             open_list.queue(node);
                             _dbg11("[Cone] <<<<<< [QUEUE] node at root {" << node << "}");
@@ -741,9 +738,9 @@ namespace P2D::ANYA2
             Corner *crn_start = crns.try_emplace(k_start, p_start);
             crn_start->min_g = 0;
             Node *node_start_pos = crn_start->emplaceNode(nullptr, 0, NodeType::Flat, 0);
-            node_start_pos->ray_neg = V2(1, 0); // not used, just to indicate direction of flat expansion
+            node_start_pos->neg_ray = V2(1, 0); // not used, just to indicate direction of flat expansion
             Node *node_start_neg = crn_start->emplaceNode(nullptr, 0, NodeType::Flat, 0);
-            node_start_neg->ray_pos = V2(1, 0); // not used, just to indicate direction of flat expansion
+            node_start_neg->pos_ray = V2(1, 0); // not used, just to indicate direction of flat expansion
 
             // Expand flat nodes and find cone nodes from start
             std::vector<V2> path = {};

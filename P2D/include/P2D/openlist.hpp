@@ -69,6 +69,7 @@ namespace P2D
         // Queues element by insert sort
         void queue(T *const &ele)
         {
+            assert(ele->openlist_next == nullptr && ele->openlist_prev == nullptr); // must not already be queued
             assert(ele->f < INF);
 
             T *ele_prev = nullptr;

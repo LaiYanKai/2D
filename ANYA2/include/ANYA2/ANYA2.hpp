@@ -662,6 +662,7 @@ namespace P2D::ANYA2
                             updateHCost(node, p_goal);
                             open_list.queue(node);
                             _dbg11("[Cone] <<<<<< [QUEUE] node at root {" << node << "}");
+                            used_current_node = true;
                         }
                     }
 

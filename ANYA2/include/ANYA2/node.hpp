@@ -16,7 +16,8 @@ namespace P2D::ANYA2
     struct Interval
     {
         V2 vert_pos = {-1, -1}, vert_neg = {-1, -1}, diff_pos, diff_neg;
-        Interval(const int_t &x_neg, const int_t &y_neg, const V2 &root_coord) : vert_neg(x_neg, y_neg), diff_neg(vert_neg - root_coord) {}
+        // Interval(const int_t &x_neg, const int_t &y_neg, const V2 &root_coord) : vert_neg(x_neg, y_neg), diff_neg(vert_neg - root_coord) {}
+        Interval(const V2 &vert_neg, const V2 &diff_neg) : vert_neg(vert_neg), diff_neg(diff_neg) {}
     };
 
     struct Node;

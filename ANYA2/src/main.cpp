@@ -4,7 +4,7 @@
 #include "ANYA2/ANYA2.hpp"
 
 #define DIAG_BLOCK true
-#define SCEN_NUM 500
+#define SCEN_NUM 800
 
 int main(int, char **)
 {

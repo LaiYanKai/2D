@@ -2,7 +2,7 @@
 clear all; close all; clc
 
 algo = "VG2B";
-scen = 500;
+scen = 800;
 
 % map_pair = ["dao", "arena"];
 map_pair = ["da2", "lt_0_lowtown_a3_n_c"];
@@ -63,6 +63,14 @@ if ~isempty(S2.path)
     plot(S2.path(:, 1), S2.path(:, 2), 'r.-');
     hold off
 end
+%% plot a manual path in the same map
+path = [
+    183, 284;  190, 280;  191, 279;  202, 268;  231, 215;  267, 211;  268, 201;  268, 193;  267, 186;  261, 179;  254, 162;  254, 153;  255, 143;  259, 132;  260, 129;  266, 106;  277,  41 
+    ];
+fprintf("PathCost %.10f\n", sum(vecnorm(diff(path), 2, 2)));
+hold on
+plot(path(:,1), path(:,2), 'b.-')
+hold off
 %% Scale Map twice, and convert pfarc into scen
 clear all
 map_pairs = [

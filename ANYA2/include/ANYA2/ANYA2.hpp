@@ -175,7 +175,7 @@ namespace P2D::ANYA2
 
                         if (reused_node == false && crn == node->crn)
                         { // have not converted the flat node to cone node
-                            
+
                             assert(from_start == true || sgn(node->dx) == sgn_x);
                             V2 &ray_to = sgn_y > 0 ? node->ray_pos : node->ray_neg;
                             ray_to = V2(sgn_x, y - crn->coord.y);
@@ -367,6 +367,8 @@ namespace P2D::ANYA2
                 }
 
                 // ====================== Determine first and last cell to check for cell row after interval =======================
+                if (root == V2(266, 106) && dx == -7)
+                    _dbghelp;
                 {
                     Boundary &b = boundary_neg;
                     if (b.ray_dir > 0)
@@ -400,7 +402,7 @@ namespace P2D::ANYA2
                         b.kv_bound = grid->coordToKey<false>(b.pv_bound);
                     }
                     else
-                    {                          // perpendicular or no tail. determine first cell from current row
+                    {                             // perpendicular or no tail. determine first cell from current row
                         b.pv_bound = b.pv_cur; // lies outside of angular sec
                         b.kv_bound = b.kv_cur; // lies outside of sec
                     }
@@ -417,14 +419,27 @@ namespace P2D::ANYA2
                     int_t y = boundary_neg.pv_bound.y;
                     mapkey_t kc = boundary_neg.kc_bound;
                     const mapkey_t &rkc = grid->getRelKey<true>(2);
-                    bool scan_oc = true;
+                    bool scan_oc = grid->isOc(kc);
+                    // place interval for starting from free
+                    if (scan_oc == false)
+                        intervals.emplace_back(V2(x, y), boundary_neg.ray);
                     while (1)
                     {
+                        ++y;
+                        if (y >= last_y)
+                            break;
+                        kc = grid->addKeyToRelKey(kc, rkc);
                         if (scan_oc == true && grid->isOc(kc) == false)
                         { // found first free cell after scanning occupied cells. create new interval
                             assert(intervals.empty() == true || intervals.back().vert_pos.y >= 0);
-                            intervals.emplace_back(x, y, root);
+                            const V2 vert_neg(x,y);
+                            intervals.emplace_back(vert_neg, vert_neg - root);
                             scan_oc = false;
+
+                            // test if beyond ray_pos, if it is, stop scan, don't emplace back
+
+                            // upgrade 
+
                         }
                         else if (scan_oc == false && grid->isOc(kc) == true)
                         { // found first oc cell after scanning free cells. fill last interval
@@ -432,16 +447,15 @@ namespace P2D::ANYA2
                             intervals.back().vert_pos = V2(x, y);
                             intervals.back().diff_pos = V2(x, y) - root;
                             scan_oc = true;
+
+
+                            // test if beyond ray neg, if it is,  delete interval
                         }
-                        ++y;
-                        if (y >= last_y)
-                            break;
-                        kc = grid->addKeyToRelKey(kc, rkc);
                     }
                     if (intervals.empty() == false && intervals.back().vert_pos.y < 0) // unfilled
                     {
                         intervals.back().vert_pos = V2(x, last_y);
-                        intervals.back().diff_pos = V2(x, last_y) - root;
+                        intervals.back().diff_pos = boundary_pos.ray;// V2(x, last_y) - root; 
                     }
                 }
 
@@ -450,7 +464,7 @@ namespace P2D::ANYA2
                 { // has tail at negative side
                     for (auto itv_ = intervals.begin(); itv_ != intervals.end();)
                     {
-                        assert(itv_->diff_pos.x == dx);
+                        assert(sgn(itv_->diff_pos.x) == sgn(dx));
                         if (sgn(dx) * det(node->ray_neg, itv_->diff_pos) <= 0) // interval lies beyond neg ray of node
                             itv_ = intervals.erase(itv_);
                         else
@@ -461,7 +475,7 @@ namespace P2D::ANYA2
                 { // has tail at positive side
                     for (auto itv_ = intervals.begin(); itv_ != intervals.end();)
                     {
-                        assert(itv_->diff_neg.x == dx);
+                        assert(sgn(itv_->diff_neg.x) == sgn(dx));
                         if (sgn(dx) * det(itv_->diff_neg, node->ray_pos) <= 0)
                             itv_ = intervals.erase(itv_);
                         else
@@ -526,7 +540,7 @@ namespace P2D::ANYA2
                         {
                             new_crn->min_g = new_g;
                             has_cone_successors = true;
-                            Node *new_node = node->crn->emplaceNode(node, new_g, NodeType::Cone, sgn(dx));
+                            Node *new_node = new_crn->emplaceNode(node, new_g, NodeType::Cone, sgn(dx));
                             new_node->ray_neg = V2(new_node->dx, 0);
 
                             // adjust ray_pos
@@ -572,7 +586,7 @@ namespace P2D::ANYA2
                         {
                             new_crn->min_g = new_g;
                             has_cone_successors = true;
-                            Node *new_node = node->crn->emplaceNode(node, new_g, NodeType::Cone, sgn(dx));
+                            Node *new_node = new_crn->emplaceNode(node, new_g, NodeType::Cone, sgn(dx));
                             new_node->ray_pos = V2(new_node->dx, 0);
 
                             // adjust ray_neg
@@ -636,7 +650,9 @@ namespace P2D::ANYA2
                 {
                     _dbgtitle("[Cone] More than one successor:");
                     _dbginc;
-                    assert(intervals.size() > 1 || has_flat_successors == true); // one interval and created flat nodes, or multiple intervals (regardless of flat nodes creation)
+                    // one interval and created flat/successor nodes, or multiple intervals (regardless of flat nodes creation)
+                    assert((intervals.size() <= 1 && (has_flat_successors || has_cone_successors)) ||
+                           intervals.size() > 1);
 
                     bool used_current_node = false;
                     for (const Interval &interval : intervals)
@@ -705,7 +721,7 @@ namespace P2D::ANYA2
                         if (node == nullptr)
                             break; // no path found;
 
-                        _dbg11(">>>>>> [POLL] New node {" << node << "} ");
+                        _dbg11(">>>>>> [POLL] F$(" << node->f << ") Node {" << node << "} ");
 
                         // ======= Flat or Cone node ======
                         if (node->type == NodeType::Cone)

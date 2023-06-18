@@ -15,9 +15,8 @@ namespace P2D::ANYA2
 
     struct Interval
     {
-        V2 vert_pos = {-1, -1}, vert_neg = {-1, -1}, diff_pos, diff_neg;
-        // Interval(const int_t &x_neg, const int_t &y_neg, const V2 &root_coord) : vert_neg(x_neg, y_neg), diff_neg(vert_neg - root_coord) {}
-        Interval(const V2 &vert_neg, const V2 &diff_neg) : vert_neg(vert_neg), diff_neg(diff_neg) {}
+        V2 coord_pos = {-1, -1}, coord_neg = {-1, -1}, ray_pos, ray_neg;
+        Interval(const V2 &coord_neg, const V2 &ray_neg) : coord_neg(coord_neg), ray_neg(ray_neg) {}
     };
 
     struct Node;
@@ -29,11 +28,7 @@ namespace P2D::ANYA2
         mapkey_t key = 0;
 
         Corner(const mapkey_t &key, const V2 &coord) : coord(coord), key(key){};
-
-        inline Node *emplaceNode(Node *const &parent, const float_t &g, const NodeType &type, const int_t &dx)
-        {
-            return &nodes.emplace_front(this, parent, g, type, dx);
-        }
+        inline Node *emplaceNode(Node *const &parent, const float_t &g, const NodeType &type, const int_t &dx) { return &nodes.emplace_front(this, parent, g, type, dx); }
     };
 
     struct Node
@@ -89,16 +84,46 @@ namespace P2D::ANYA2
         return out;
     }
 
-    struct Boundary
+    struct Cone
     {
-        const V2 &ray;
-        V2 pv_cur, pv_bound;
-        mapkey_t kv_cur, kv_bound, kc_bound;
-        const int_t sgn_y;
-        const int_t ray_dir; // if positive, there is a tail. if zero, ray has no y component. if negative, ray has no tail
+        Node *const node;
+        Cone(Node *const &node) : node(node) { assert(node->dx != 0); }
+        inline const V2 &root() const { return node->crn->coord; }
+        inline const int_t &dx() const { return node->dx; }
+        inline int_t sgnX() const
+        {
+            assert(this->dx() != 0);
+            return this->dx() > 0 ? 1 : -1;
+        }
+        inline int_t dxNext() const { return dx() + sgnX(); }
+        inline int_t x() const { return root().x + dx(); }
+        inline int_t xNext() const { return root().x + dxNext(); }
+        inline const V2 &negRay() const { return node->ray_neg; }
+        inline const V2 &posRay() const { return node->ray_neg; }
+        inline const V2 &ray(const int_t &sgn_y) const { return sgn_y < 0 ? negRay() : posRay(); }
 
-        // does not calculate next interval
-        Boundary(const V2 &ray, const int_t &sgn_y) : ray(ray), sgn_y(sgn_y), ray_dir(ray.y * sgn_y) {}
+        inline int_t rayY(const int_t &dx, V2 const &ray) const { return dx * ray.y / ray.x; }
+        inline float_t rayYf(const int_t &dx, V2 const &ray) const { return float_t(dx) * ray.y / ray.x; }
+        inline int_t negRayCurY() const { return rayY(dx(), negRay()); }
+        inline int_t posRayCurY() const { return rayY(dx(), posRay()); }
+        inline int_t rayCurY(const int_t &sgn_y) const { return sgn_y < 0 ? negRayCurY() : posRayCurY(); }
+        inline int_t negRayNextY() const { return rayY(dxNext(), negRay()); }
+        inline int_t posRayNextY() const { return rayY(dxNext(), posRay()); }
+        inline int_t rayNextY(const int_t &sgn_y) const { return sgn_y < 0 ? negRayNextY() : posRayNextY(); }
+
+        inline V2 negRayNextCoord() const { return V2(xNext(), negRayNextY()); }
+        inline V2 posRayNextCoord() const { return V2(xNext(), posRayNextY()); }
+        inline V2 rayNextCoord(const int_t &sgn_y) const { return sgn_y < 0 ? negRayNextCoord() : posRayNextCoord(); }
+        inline V2 negRayCurCoord() const { return V2(x(), negRayCurY()); }
+        inline V2 posRayCurCoord() const { return V2(x(), posRayCurY()); }
+        inline V2 rayCurCoord(const int_t &sgn_y) const { return sgn_y < 0 ? negRayCurCoord() : posRayCurCoord(); }
+
+        inline bool negRayHasTail() const { return negRay().y < 0; }
+        inline bool posRayHasTail() const { return posRay().y > 0; }
+        inline bool rayHasTail(const int_t &sgn_y) const { return sgn_y < 0 ? negRayHasTail() : posRayHasTail(); }
+        inline bool negRayIsPerp() const { return negRay().y == 0; }
+        inline bool posRayIsPerp() const { return posRay().y == 0; }
+        inline bool rayIsPerp(const int_t &sgn_y) const { return sgn_y < 0 ? negRayIsPerp() : posRayIsPerp(); }
     };
 
     class Corners

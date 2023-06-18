@@ -303,7 +303,7 @@ namespace P2D
         // checks if test coordinate (x or y) of vertex or cell is in the map by comparing the coordinate and the boundary value dir_idx
         // dir_idx has to be cardinal
         template <bool is_cell>
-        inline bool inMap(const int_t &test, const dir_idx_t &dir_idx) const
+        inline bool inBoundary(const int_t &test, const dir_idx_t &dir_idx) const
         {
             assert(isCardinal(dir_idx) == true);
             assert(inRange(dir_idx) == true);

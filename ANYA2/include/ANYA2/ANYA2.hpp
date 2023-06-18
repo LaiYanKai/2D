@@ -56,7 +56,7 @@ namespace P2D::ANYA2
                     V2f vert_pos(node->dx, float_t(node->dx) * node->ray_pos.y / node->ray_pos.x);
                     vert_pos += rootf;
                     node->h = norm(V2f(p_goal), vert_pos) + norm(vert_pos, rootf);
-                    _dbg11("[HCost] Detour around RayPos (" << node->ray_pos << ") at vertex coordinate(" << vert_pos << ")");
+                    _dbg11("[HCost] Detour around +Ray (" << node->ray_pos << ") at vertex coordinate(" << vert_pos << ")");
                 }
                 else if (sgn(node->dx) * det(node->ray_neg, v_gfr) < 0)
                 { // h cost has to detour around node->ray_neg
@@ -64,7 +64,7 @@ namespace P2D::ANYA2
                     V2f vert_neg(node->dx, float_t(node->dx) * node->ray_neg.y / node->ray_neg.x);
                     vert_neg += rootf;
                     node->h = norm(V2f(p_goal), vert_neg) + norm(vert_neg, rootf);
-                    _dbg11("[HCost] Detour around RayNeg (" << node->ray_neg << ") at vertex coordinate(" << vert_neg << ")");
+                    _dbg11("[HCost] Detour around -Ray (" << node->ray_neg << ") at vertex coordinate(" << vert_neg << ")");
                 }
                 else // calculate h-cost directly
                     node->h = norm(p_goal, node->crn->coord);
@@ -87,11 +87,11 @@ namespace P2D::ANYA2
             const int_t sgn_y = node->ray_neg == 0 ? -1 : 1;
             dir_idx_t di = dirToDirIdx(0, sgn_y);
             int_t last_y = grid->getBoundary<false>(di);
-            mapkey_t rkc = grid->getRelKey<true>(di);
+            mapkey_t rcell_key = grid->getRelKey<true>(di);
             di = dirToDirIdx(1, sgn_y);
-            mapkey_t kc_above = grid->addKeyToRelKey(kv, grid->getCellRelKey(di, x));
+            mapkey_t cell_key_above = grid->addKeyToRelKey(kv, grid->getCellRelKey(di, x));
             di = dirToDirIdx(-1, sgn_y);
-            mapkey_t kc_below = grid->addKeyToRelKey(kv, grid->getCellRelKey(di, x));
+            mapkey_t cell_key_below = grid->addKeyToRelKey(kv, grid->getCellRelKey(di, x));
 
             Corner *crn_above = nullptr, *crn_below = nullptr;
             bool is_oc_above_prev = false;
@@ -140,13 +140,13 @@ namespace P2D::ANYA2
                 {
                     if (stopped_above == false)
                     {
-                        kc_above = grid->addKeyToRelKey(kc_above, rkc);
-                        is_oc_above = grid->isOc(kc_above);
+                        cell_key_above = grid->addKeyToRelKey(cell_key_above, rcell_key);
+                        is_oc_above = grid->isOc(cell_key_above);
                     }
                     if (stopped_below == false)
                     {
-                        kc_below = grid->addKeyToRelKey(kc_below, rkc);
-                        is_oc_below = grid->isOc(kc_below);
+                        cell_key_below = grid->addKeyToRelKey(cell_key_below, rcell_key);
+                        is_oc_below = grid->isOc(cell_key_below);
                     }
 
                     if constexpr (diag_block)
@@ -243,134 +243,171 @@ namespace P2D::ANYA2
             return false;
         }
 
+        inline bool _expandConeFoundGoal(Cone &cone, const V2 &p_goal, std::vector<V2> &path) const
+        {
+            if (cone.x() == p_goal.x)
+            {
+                bool found_goal;
+                if (cone.negRayHasTail() == true || cone.negRayIsPerp() == true) // ray is going to -y or no change in y from root
+                    found_goal = p_goal.y >= b_neg.y_cur;                        // the result of quotient (dx * ray.y / ray.x) is in +y direction of or on true value
+                else                                                             // ray is going to +y from root
+                    found_goal = p_goal.y > b_neg.y_cur;                         // the result of quotient is in -y direction of true value
+
+                if (cone.posRayHasTail() == true || cone.posRayIsPerp() == true) // ray is going to +y or no change in y from root
+                    found_goal &= p_goal.y <= b_pos.y_cur;                       // result of quotient is in -y direction of or on true value
+                else                                                             // ray is going to -y from root
+                    found_goal &= p_goal.y < b_pos.y_cur;                        // the result of quotient is in +y direction of true value
+
+                if (found_goal == true)
+                { // terminate and find path if goal intersects interval
+                    foundGoal(cone.node, path, p_goal);
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        inline bool _expandConeFindFlatSuccessors(Cone &cone, const V2 &p_goal, std::vector<V2> &path)
+        {
+            for (const int_t &sgn_y : {-1, 1})
+            {
+                if (cone.rayIsPerp(sgn_y) == true || cone.rayHasTail(sgn_y) == true)
+                {                                                  // (ray is perpendicular or has tail interval)
+                    const V2 vert_coord = cone.rayCurCoord(sgn_y); // r2z vertex at cur row
+
+                    // check +dx, +sgn_y cell
+                    dir_idx_t di = dirToDirIdx(dx, sgn_y);
+                    V2 cell_coord = vert_coord + grid->getCellRelCoord(di);
+                    if (grid->isAccessible(cell_coord) == true)
+                    { // +dx, +sgn_y cell is free
+
+                        // check -dx, +sgn_y cell
+                        di = dirToDirIdx(-dx, sgn_y);
+                        cell_coord = vert_coord + grid->getCellRelCoord(di);
+                        if (grid->isAccessible(cell_coord) == false)
+                        { // -dx, +sgn_y cell is occupied
+
+                            // Determine if flat successor can be created (check diagonal block):
+                            bool create_flat = true;
+                            if constexpr (diag_block == true)
+                            { // check +dx, -sgn_y cell
+                                di = dirToDirIdx(dx, -sgn_y);
+                                cell_coord = vert_coord + grid->getCellRelCoord(di);
+                                // create flat if +dx, +y cell is free
+                                create_flat = grid->isAccessible(cell_coord) == true;
+                            }
+
+                            // Create flat successor if can be created:
+                            if (create_flat == true)
+                            {
+                                Corner *new_crn = crns.try_emplace(vert_key, vert_coord);
+                                float_t new_g = node->g + norm(vert_coord, cone.root());
+                                if (new_crn->min_g > new_g)
+                                {
+                                    new_crn->min_g = new_g;
+                                    Node *new_node = new_crn->emplaceNode(node, new_g, NodeType::Flat, sgn_dx);
+                                    if (sgn_y < 0)
+                                    {
+                                        assert(new_node->ray_neg == 0);
+                                        new_node->ray_pos = vert_coord - cone.root();
+                                    }
+                                    else
+                                    {
+                                        assert(new_node->ray_pos == 0);
+                                        new_node->ray_neg = vert_coord - cone.root();
+                                    }
+                                    updateHCost(new_node, p_goal);
+                                    open_list.queue(new_node);
+                                    _dbg11("[Cone] <<<<<< [QUEUE] new flat node at neg {" << new_node << "}");
+                                    return true;
+                                }
+                                else
+                                {
+                                    _dbg11("[Cone] Flat node cannot be created at Vert(" << vert_coord << ") bcos new G$(" << new_g << ") >= cur G$(" << new_crn->min_g << ")");
+                                }
+                            } // create flat
+                        }     // -dx, +sgn_y cell is occupied
+                    }         // +dx +sgn_y cell is free
+                }             // has turning point if +dx is same as ray.x
+            }
+            return false;
+        }
+
         inline bool expandCone(Node *const &node, const V2 &p_goal, std::vector<V2> &path)
         {
             _dbgtitle("[Cone] Expand Cone Node { " << node << " }");
             _dbginc;
 
+            // Cone class stores the node and performs simple calculations. -O3 should cache all repeated calcs.
+            Cone cone(node);
+
             while (1)
             {
                 _dbgtitle("[Cone:" << node->dx << "] { " << node << " }");
                 _dbginc;
-                assert(node->dx != 0);
-                const V2 &root = node->crn->coord;
-                const int_t &dx = node->dx;
 
-                // ====================== Calculate coordinates and keys at boundaries ======================
-                Boundary boundary_neg(node->ray_neg, -1);
-                Boundary boundary_pos(node->ray_pos, 1);
-                for (Boundary *const &b : {&boundary_neg, &boundary_pos})
-                {
-                    b->pv_cur = V2(dx, dx * b->ray.y / b->ray.x) + root;
-                    b->kv_cur = grid->coordToKey<false>(b->pv_cur);
-                }
-
-                // requires rays and dx to be resolved for current interval at dx.
                 // ====================== Check if node's expanded interval intersects goal =============================
-                if (node->dx + root.x == p_goal.x)
+                if (_expandConeFindFlatSuccessors(cone, p_goal, path))
                 {
-                    bool found_goal;
-                    if (boundary_neg.ray_dir >= 0)                      // ray is going to -y or no change in y from root
-                        found_goal = p_goal.y >= boundary_neg.pv_cur.y; // the result of quotient (dx * ray.y / ray.x) is in +y direction of or on true value
-                    else                                                // ray is going to +y from root
-                        found_goal = p_goal.y > boundary_neg.pv_cur.y;  // the result of quotient is in -y direction of true value
-
-                    if (boundary_pos.ray_dir >= 0)                       // ray is going to +y or no change in y from root
-                        found_goal &= p_goal.y <= boundary_pos.pv_cur.y; // result of quotient is in -y direction of or on true value
-                    else                                                 // ray is going to -y from root
-                        found_goal &= p_goal.y < boundary_pos.pv_cur.y;  // the result of quotient is in +y direction of true value
-
-                    if (found_goal == true)
-                    { // terminate and find path if goal intersects interval
-                        foundGoal(node, path, p_goal);
-                        _dbgdec;
-                        _dbgdec;
-                        return true;
-                    }
+                    _dbgdec;
+                    _dbgdec;
+                    return true;
                 }
 
                 // ======== Check if the next interval is out of map =============
-                const int_t x = node->dx + root.x;
                 if (x == 0 || x == grid->getSize<true>().x)
                 {
                     _dbg11("[Cone] Next Interval is out of map ");
                     _dbgdec;
                     break;
                 }
-                const int_t dx_next = node->dx + (node->dx < 0 ? -1 : 1);
-                const int_t x_next = dx_next + root.x;
 
                 // ====================== Add Turning Points on both (+y and -y) sides ======================
-                // get the y rounded-to-zero (r2z) vertices near the edge of the current and next intervals
+                bool has_flat_successors = _expandConeFlatSuccessors(b_neg, b_pos, node);
 
-                bool has_flat_successors = false;
-                for (Boundary *const &b : {&boundary_neg, &boundary_pos})
+                // ====================== Create Interval if first cell is empty ==================
+                std::vector<Interval> intervals;
                 {
-                    if (b->ray_dir >= 0)
-                    { // (ray is perpendicular or has tail interval)
-                        V2 pc;
-                        mapkey_t kc;
+                    V2 vert_coord = cone.negRayCurCoord();
+                    dir_idx_t di = dirToDirIdx(cone.dx(), 1); // check cell in +dx +y direction of r2z coord at neg ray and current row.
+                    V2 cell_coord = vert_coord + grid->getCellRelCoord(di);
+                    if (grid->isAccessible(cell_coord))
+                    { // create free interval bcos the +dx +y cell of the neg-ray r2z-coord is free.
+                        intervals.emplace_back(cell_coord, cone.negRay());
+                    }
+                }
 
-                        // check +dx, +sgn_y cell
-                        dir_idx_t di = dirToDirIdx(dx, b->sgn_y);
-                        grid->getCellKeyAndCoord(di, b->kv_cur, b->pv_cur, kc, pc);
-                        if (grid->isAccessible(kc, pc) == true)
-                        { // +dx, +sgn_y cell is free
+                // ====================== Check left tail if any ===========================
+                if (cone.negRayHasTail() == true)
+                {
+                    bool was_oc = intervals.empty(); // if the cell in +y direction of the neg-ray r2z-coord is occupied, the intervals will be empty
 
-                            // check -dx, +sgn_y cell
-                            di = dirToDirIdx(-dx, b->sgn_y);
-                            grid->getCellKeyAndCoord(di, b->kv_cur, b->pv_cur, kc, pc);
-                            if (grid->isAccessible(kc, pc) == false)
-                            { // -dx, +sgn_y cell is occupied
+                    V2 vert_coord = cone.negRayCurCoord();
+                    int_t y_end = cone.negRayNextY();
+                    mapkey_t rel_cell_key = grid->getRelKey(6);
 
-                                bool create_flat = true;
-                                if constexpr (diag_block == true)
-                                { // check +dx, -sgn_y cell
-                                    di = dirToDirIdx(dx, -b->sgn_y);
-                                    grid->getCellKeyAndCoord(di, b->kv_cur, b->pv_cur, kc, pc);
-                                    // create flat if +dx, +y cell is free
-                                    create_flat = grid->isAccessible(kc, pc) == true;
-                                }
+                    dir_idx_t di = dirToDirIdx(cone.dx(), -1); // +dx -y cell
+                    V2 cell_coord = vert_coord + grid->getCellRelCoord(di);
+                    mapkey_t cell_key = grid->coordToKey<true>(cell_coord);
+                    while (vert_coord.y >= y_end)
+                    {
+                        // if out of map or cell is occupied, set is_oc to true
+                        bool is_oc = grid->inBoundary<true>(cell_coord.y, 6) == false || grid->isOc(cell_key) == true; 
 
-                                if (create_flat == true)
-                                {
-                                    has_flat_successors = true;
-                                    Corner *new_crn = crns.try_emplace(b->kv_cur, b->pv_cur);
-                                    float_t new_g = node->g + norm(b->pv_cur, root);
-                                    if (new_crn->min_g > new_g)
-                                    {
-                                        new_crn->min_g = new_g;
-                                        Node *new_node = new_crn->emplaceNode(node, new_g, NodeType::Flat, sgn(dx));
-                                        if (b->sgn_y < 0)
-                                        {
-                                            assert(new_node->ray_neg == 0);
-                                            new_node->ray_pos = b->pv_cur - root;
-                                        }
-                                        else
-                                        {
-                                            assert(new_node->ray_pos == 0);
-                                            new_node->ray_neg = b->pv_cur - root;
-                                        }
-                                        updateHCost(new_node, p_goal);
-                                        open_list.queue(new_node);
-                                        _dbg11("[Cone] <<<<<< [QUEUE] new flat node at neg {" << new_node << "}");
-                                    }
-                                    else
-                                    {
-                                        _dbg11("[Cone] Flat node cannot be created at Vert(" << b->pv_cur << ") bcos new G$(" << new_g << ") >= cur G$(" << new_crn->min_g << ")");
-                                    }
 
-                                } // create flat
-                            }     // -dx, +sgn_y cell is occupied
-                        }         // +dx +sgn_y cell is free
-                    }             // has turning point if +dx is same as ray.x
+
+                        
+
+                        // go to next cell
+                        --cell_coord.y;
+                        grid->addKeyToRelKey(cell_key, rel_cell_key);
+                    }
                 }
 
                 // ====================== Determine first and last cell to check for cell row after interval =======================
-                if (root == V2(266, 106) && dx == -7)
-                    _dbghelp;
+                // Boundaries contain vertices that lie on or immediately outside the rays, so all cells between the vertices are checked
                 {
-                    Boundary &b = boundary_neg;
+                    Boundary &b = b_neg;
                     if (b.ray_dir > 0)
                     { // has tail
                         // determine first cell by taking y of next row
@@ -386,10 +423,10 @@ namespace P2D::ANYA2
                         b.kv_bound = b.kv_cur;
                     }
                     dir_idx_t di = dirToDirIdx(dx, 1);
-                    b.kc_bound = grid->addKeyToRelKey(b.kv_bound, grid->getCellRelKey(di, b.pv_bound.x));
+                    b.cell_key_bound = grid->addKeyToRelKey(b.kv_bound, grid->getCellRelKey(di, b.pv_bound.x));
                 }
                 {
-                    Boundary &b = boundary_pos;
+                    Boundary &b = b_pos;
                     assert(b.kv_cur == grid->coordToKey<false>(b.pv_cur));
 
                     if (b.ray_dir > 0)
@@ -402,52 +439,52 @@ namespace P2D::ANYA2
                         b.kv_bound = grid->coordToKey<false>(b.pv_bound);
                     }
                     else
-                    {                             // perpendicular or no tail. determine first cell from current row
+                    {                          // perpendicular or no tail. determine first cell from current row
                         b.pv_bound = b.pv_cur; // lies outside of angular sec
                         b.kv_bound = b.kv_cur; // lies outside of sec
                     }
                 }
 
-                _dbg11("[Cone] VertexNeg(" << boundary_neg.pv_bound << ") VertexPos(" << boundary_pos.pv_bound << ")");
+                _dbg11("[Cone] VertexNeg(" << b_neg.pv_bound << ") VertexPos(" << b_pos.pv_bound << ")");
 
-                assert(boundary_pos.pv_bound.y >= boundary_neg.pv_bound.y); // cannot be opposite under current assumptions
+                assert(b_pos.pv_bound.y >= b_neg.pv_bound.y); // cannot be opposite under current assumptions
 
                 // ---------- Scan cell interval --------------
                 std::vector<Interval> intervals;
                 {
-                    const int_t &last_y = boundary_pos.pv_bound.y;
-                    int_t y = boundary_neg.pv_bound.y;
-                    mapkey_t kc = boundary_neg.kc_bound;
-                    const mapkey_t &rkc = grid->getRelKey<true>(2);
-                    bool scan_oc = grid->isOc(kc);
+                    const int_t &last_y = b_pos.pv_bound.y;
+                    int_t y = b_neg.pv_bound.y;
+                    mapkey_t cell_key = b_neg.cell_key_bound;
+                    const mapkey_t &rcell_key = grid->getRelKey<true>(2);
+                    bool scan_oc = grid->isOc(cell_key);
                     // place interval for starting from free
                     if (scan_oc == false)
-                        intervals.emplace_back(V2(x, y), boundary_neg.ray);
+                        intervals.emplace_back(V2(x, y), b_neg.ray);
+
                     while (1)
                     {
                         ++y;
                         if (y >= last_y)
                             break;
-                        kc = grid->addKeyToRelKey(kc, rkc);
-                        if (scan_oc == true && grid->isOc(kc) == false)
+                        cell_key = grid->addKeyToRelKey(cell_key, rcell_key);
+
+                        if (scan_oc == true && is_oc == false)
                         { // found first free cell after scanning occupied cells. create new interval
                             assert(intervals.empty() == true || intervals.back().vert_pos.y >= 0);
-                            const V2 vert_neg(x,y);
+                            const V2 vert_neg(x, y);
                             intervals.emplace_back(vert_neg, vert_neg - root);
                             scan_oc = false;
 
                             // test if beyond ray_pos, if it is, stop scan, don't emplace back
 
-                            // upgrade 
-
+                            // upgrade
                         }
-                        else if (scan_oc == false && grid->isOc(kc) == true)
+                        else if (scan_oc == false && is_oc == true)
                         { // found first oc cell after scanning free cells. fill last interval
                             assert(intervals.empty() == false && intervals.back().vert_pos.y < 0);
                             intervals.back().vert_pos = V2(x, y);
                             intervals.back().diff_pos = V2(x, y) - root;
                             scan_oc = true;
-
 
                             // test if beyond ray neg, if it is,  delete interval
                         }
@@ -455,12 +492,12 @@ namespace P2D::ANYA2
                     if (intervals.empty() == false && intervals.back().vert_pos.y < 0) // unfilled
                     {
                         intervals.back().vert_pos = V2(x, last_y);
-                        intervals.back().diff_pos = boundary_pos.ray;// V2(x, last_y) - root; 
+                        intervals.back().diff_pos = b_pos.ray; // V2(x, last_y) - root;
                     }
                 }
 
                 // ================= Delete Intervals that lie outside the angular sector ==========================
-                if (boundary_neg.ray_dir > 0)
+                if (b_neg.ray_dir > 0)
                 { // has tail at negative side
                     for (auto itv_ = intervals.begin(); itv_ != intervals.end();)
                     {
@@ -471,7 +508,7 @@ namespace P2D::ANYA2
                             ++itv_;
                     }
                 }
-                if (boundary_pos.ray_dir > 0)
+                if (b_pos.ray_dir > 0)
                 { // has tail at positive side
                     for (auto itv_ = intervals.begin(); itv_ != intervals.end();)
                     {

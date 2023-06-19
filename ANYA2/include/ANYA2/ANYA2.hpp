@@ -343,6 +343,8 @@ namespace P2D::ANYA2
 
         inline bool _expandConeFindFlatSuccessors(Cone &cone, const V2 &p_goal)
         {
+            if (cone.root() == V2(165,305) && cone.dx() == 27)
+                _dbghelp;
             bool has_flat_successor = false;
             for (const int_t &sgn_y : {-1, 1})
             {
@@ -552,6 +554,7 @@ namespace P2D::ANYA2
                 for (auto interval_ = intervals.begin(); interval_ != intervals.end();)
                 {
                     Interval &interval = *interval_;
+                    bool remove_interval = cone.sgnX() * det(interval.neg_ray, interval.pos_ray) <= 0;
 
                     // ------- Generate cone at interval -ray (if not at node -ray) --------------
                     if ((interval.position == 0b01 || interval.position == 0b00) && interval.neg_ray.y > 0)
@@ -568,16 +571,13 @@ namespace P2D::ANYA2
                             new_node->neg_ray = V2(cone.sgnX(), 0);
                             new_node->pos_ray = interval.neg_ray;
 
-                            if (cone.sgnX() * det(interval.neg_ray, interval.pos_ray) <= 0)
+                            if (remove_interval == true)
                             { // delete this interval bcos cannot access the next row from root
                                 assert(interval.pos_ray.x == cone.dxNext());
                                 // for this to occur, the +ray of interval has to be adjusted beyond the -ray of interval, to the next x;
                                 // the pos ray has to point to the next x from the root
                                 new_node->pos_ray = interval.pos_ray - interval.neg_ray;
-                                interval_ = intervals.erase(interval_);
                             }
-                            else
-                                ++interval_;
 
                             // queue
                             updateHCost(new_node, p_goal);
@@ -586,10 +586,7 @@ namespace P2D::ANYA2
                             has_cone_successors = true;
                         }
                         else
-                        {
                             _dbg11("[Cone] Cone node cannot be created at (" << vert_coord << ") bcos new G$(" << new_g << ") >= cur G$(" << new_crn->min_g << ")");
-                            ++interval_;
-                        }
                     }
                     // ------- Generate cone at interval +ray (if not at node +ray)--------------
                     else if ((interval.position == 0b10 || interval.position == 0b00) && interval.pos_ray.y < 0)
@@ -606,16 +603,13 @@ namespace P2D::ANYA2
                             new_node->neg_ray = interval.pos_ray;
                             new_node->pos_ray = V2(cone.sgnX(), 0);
 
-                            if (cone.sgnX() * det(interval.neg_ray, interval.pos_ray) <= 0)
+                            if (remove_interval)
                             { // delete this interval bcos cannot access the next row from root
                                 assert(interval.neg_ray.x == cone.dxNext());
                                 // for this to occur, the -ray of interval has to be adjusted beyond the +ray of interval, to the next x;
-                                // the +ray has to point to the next x from the root
+                                // the +ray has to point to the next x from the root.
                                 new_node->neg_ray = interval.neg_ray - interval.pos_ray;
-                                interval_ = intervals.erase(interval_);
                             }
-                            else
-                                ++interval_;
 
                             // queue
                             updateHCost(new_node, p_goal);
@@ -624,18 +618,15 @@ namespace P2D::ANYA2
                             has_cone_successors = true;
                         }
                         else
-                        {
                             _dbg11("[Cone] Cone node cannot be created at (" << vert_coord << ") bcos new G$(" << new_g << ") >= cur G$(" << new_crn->min_g << ")");
-                            ++interval_;
-                        }
+
                     }
+
+                    // ------- delete interval if the rays do not result in an angular sector
+                    if (remove_interval == true)
+                        interval_ = intervals.erase(interval_);
                     else
-                    {
-                        if (cone.sgnX() * det(interval.neg_ray, interval.pos_ray) <= 0)
-                            interval_ = intervals.erase(interval_); // delete this interval bcos cannot access the next row from root
-                        else
-                            ++interval_;
-                    }
+                        ++interval_;
                 }
 
                 // ==================  Check if next row can be expanded by current root ==========================

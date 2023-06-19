@@ -2,13 +2,12 @@
 #include <fstream>
 #include <sstream>
 #include <assert.h>
-
+#include "_debugoptions.hpp"
 #pragma once
-#define LOG_PATH "dbg.log"
 
 namespace P2D
 {
-#ifdef P2D_DEBUG
+#if P2D_VERBOSE
     struct __Debug
     {
         std::ofstream log;

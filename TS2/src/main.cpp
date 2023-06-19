@@ -1,10 +1,6 @@
 #include <filesystem>
 #include "P2D/P2D.hpp"
-#include "P2D/debug.hpp"
 #include "TS2/TS2.hpp"
-
-#define DIAG_BLOCK true
-#define SCEN_NUM 0
 
 int main(int, char **)
 {

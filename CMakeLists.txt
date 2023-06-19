@@ -5,8 +5,8 @@ project(P2D
     LANGUAGES CXX)
 
 add_subdirectory(P2D)
-add_subdirectory(VG2)
-add_subdirectory(TS2)
+# add_subdirectory(VG2)
+# add_subdirectory(TS2)
 add_subdirectory(ANYA2)
 
 # add_subdirectory(LT2)

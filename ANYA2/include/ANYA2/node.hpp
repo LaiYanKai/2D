@@ -13,12 +13,6 @@ namespace P2D::ANYA2
         Cone = 1
     };
 
-    struct Interval
-    {
-        V2 neg_ray = {0,0}, pos_ray = { 0,0};
-        Interval(const V2 &neg_ray, const V2 &pos_ray) : neg_ray(neg_ray), pos_ray(pos_ray) {}
-    };
-
     struct Node;
     struct Corner
     {
@@ -84,6 +78,13 @@ namespace P2D::ANYA2
         return out;
     }
 
+    struct Interval
+    {
+        V2 neg_ray = {0, 0}, pos_ray = {0, 0};
+        char position = 0b00; // -1 if neg_ray is node's neg_ray. 1 if pos_ray is node's pos_ray. 0 otherwise;
+        Interval(const V2 &neg_ray, const V2 &pos_ray, const char &position) : neg_ray(neg_ray), pos_ray(pos_ray), position(position) {}
+    };
+
     struct Cone
     {
         Node *const node;
@@ -101,13 +102,13 @@ namespace P2D::ANYA2
         inline int_t xNext() const { return root().x + dxNext(); }
         inline const V2 &negRay() const { return node->neg_ray; }
         inline V2 &negRay() { return node->neg_ray; }
-        inline const V2 &posRay() const { return node->neg_ray; }
+        inline const V2 &posRay() const { return node->pos_ray; }
         inline V2 &posRay() { return node->pos_ray; }
         inline const V2 &ray(const int_t &sgn_y) const { return sgn_y < 0 ? negRay() : posRay(); }
         inline V2 &ray(const int_t &sgn_y) { return sgn_y < 0 ? negRay() : posRay(); }
 
-        inline int_t rayY(const int_t &dx, V2 const &ray) const { return dx * ray.y / ray.x; }
-        inline float_t rayYf(const int_t &dx, V2 const &ray) const { return float_t(dx) * ray.y / ray.x; }
+        inline int_t rayY(const int_t &dx, V2 const &ray) const { return dx * ray.y / ray.x + root().y; }
+        inline float_t rayYf(const int_t &dx, V2 const &ray) const { return float_t(dx) * ray.y / ray.x + root().y; }
         inline int_t negRayCurY() const { return rayY(dx(), negRay()); }
         inline int_t posRayCurY() const { return rayY(dx(), posRay()); }
         inline int_t rayCurY(const int_t &sgn_y) const { return sgn_y < 0 ? negRayCurY() : posRayCurY(); }

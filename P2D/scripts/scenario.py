@@ -13,7 +13,7 @@ THRES = 1e-8
 class Scenario:
     id = 0  # starts from 1
     name = ""
-    path = []
+    path = np.array([[]])
     nsec = np.nan
     cost = np.nan
 
@@ -21,6 +21,7 @@ class Scenario:
     def init(self, name, id, nsec, path):
         self.path = path
         self.nsec = nsec
+        # print(id, ' -------')
         self.getPathCost()
         self.id = id
         self.name = name
@@ -43,18 +44,24 @@ class Scenario:
     # this method reduces floating point errors
     def getPathCost(self):
         # cost = np.sum(np.linalg.norm(np.diff(path, axis=0), axis=1)) # the standard approach
+        if self.path.size == 0:
+            self.cost = np.nan    
+        else:
+            abs_diffs = np.abs(np.diff(self.path, axis=0))
+            # remove all 0, 0 abs_diffs
+            indices = np.sum(abs_diffs, axis=1) != 0
+            abs_diffs = abs_diffs[indices, :]
+            
+            gcds = np.array([np.gcd.reduce(abs_diffs, axis=1)])
+            gcds = np.repeat(gcds, 2, axis=0).T
+            hcfs = np.divide(abs_diffs, gcds) # if this gives a warning, there may be a zero cost path or overlapping turning points
+            unique_hcfs = np.unique(hcfs, axis=0) # unique rows 
 
-        abs_diffs = np.abs(np.diff(self.path, axis=0))
-        gcds = np.array([np.gcd.reduce(abs_diffs, axis=1)])
-        gcds = np.repeat(gcds, 2, axis=0).T
-        hcfs = np.divide(abs_diffs, gcds)
-        unique_hcfs = np.unique(hcfs, axis=0) # unique rows 
-
-        self.cost = 0
-        for component in unique_hcfs:
-            indices = np.where(np.all(hcfs==component, axis=1))
-            magnitude = np.sum(gcds[indices, 0])
-            self.cost += magnitude * np.linalg.norm(component)
+            self.cost = 0
+            for component in unique_hcfs:
+                indices = np.where(np.all(hcfs==component, axis=1))
+                magnitude = np.sum(gcds[indices, 0])
+                self.cost += magnitude * np.linalg.norm(component)
 
         return self.cost
 

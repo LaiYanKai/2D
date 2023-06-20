@@ -149,12 +149,12 @@ namespace P2D
         std::cout << "writeResults: Wrote results to '" << scens.fp_results << "'" << std::endl;
     }
 
-    // setups a vector of scenarios, each element (of scenarios) represent a benchmark map and its scenarios.
+    // from expt.sh, setups a vector of scenarios, with each element representing a benchmark map and its scenarios.
     std::vector<Scenarios> getExperiment(const std::string &alg)
     {
         std::ifstream file("expt.sh");
         if (!file)
-            throw std::runtime_error("options.sh does not exist");
+            throw std::runtime_error("expt.sh does not exist");
 
         std::vector<Scenarios> expt;
         std::string line;

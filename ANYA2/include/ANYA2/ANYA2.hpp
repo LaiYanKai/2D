@@ -83,14 +83,16 @@ namespace P2D::ANYA2
 
             // ====== Get parameters for cells above ===========
             di = dirToDirIdx(1, sgn_y);
-            mapkey_t cella_key = grid->coordToKey<true>(vert_coord + grid->getCellRelCoord(di));
+            V2 cell_coord = vert_coord + grid->getCellRelCoord(di);
+            mapkey_t cella_key = grid->coordToKey<true>(cell_coord);
             const bool has_a = vert_coord.x != grid->getBoundary<false>(0);
             Corner *crn_a = nullptr;
             bool scanninga_oc = true;
 
             // ====== Get parameters for cells below ===========
             di = dirToDirIdx(-1, sgn_y);
-            mapkey_t cellb_key = grid->coordToKey<true>(vert_coord + grid->getCellRelCoord(di));
+            cell_coord = vert_coord + grid->getCellRelCoord(di);
+            mapkey_t cellb_key = grid->coordToKey<true>(cell_coord);
             const bool has_b = vert_coord.x != grid->getBoundary<false>(4);
             Corner *crn_b = nullptr;
             bool scanningb_oc = true;
@@ -109,16 +111,10 @@ namespace P2D::ANYA2
                 { // have not reached end
                     // ------ Get Occupancy of cell above ----------
                     if (has_a == true)
-                    {
-                        cella_key = grid->addKeyToRelKey(cella_key, rel_cell_key);
                         a_oc = grid->isOc(cella_key);
-                    }
                     // ------ Get Occupancy of cell below ----------
                     if (has_b == true)
-                    {
-                        cellb_key = grid->addKeyToRelKey(cellb_key, rel_cell_key);
                         b_oc = grid->isOc(cellb_key);
-                    }
                     // ------ Check if diagonally blocked ----------
                     if (diag_block == true && scanninga_oc != scanningb_oc && a_oc != b_oc && a_oc != scanninga_oc)
                     { // checkerboard corner
@@ -144,7 +140,7 @@ namespace P2D::ANYA2
                     { // [ ] --(sgn_y)--> [x]
                         // generate new cone node
                         assert(crn != nullptr);
-                        crn->min_g = crn->coord.y - node->crn->coord.y;
+                        crn->min_g = std::abs(crn->coord.y - node->crn->coord.y);
                         Node *new_node = crn->emplaceNode(crn == node->crn ? nullptr : node, crn->min_g, NodeType::Cone, sgn_x);
                         new_node->neg_ray = sgn_y < 0 ? V2(sgn_x, vert_coord.y - crn->coord.y) : V2(sgn_x, 0);
                         new_node->pos_ray = sgn_y < 0 ? V2(sgn_x, 0) : V2(sgn_x, vert_coord.y - crn->coord.y);
@@ -159,6 +155,8 @@ namespace P2D::ANYA2
                 if (a_oc == true && b_oc == true)
                     break;
                 vert_coord.y += sgn_y;
+                cella_key = grid->addKeyToRelKey(cella_key, rel_cell_key);
+                cellb_key = grid->addKeyToRelKey(cellb_key, rel_cell_key);
             }
             return false;
         }
@@ -200,7 +198,7 @@ namespace P2D::ANYA2
             do
             {
                 y += sgn_y;
-                bool is_oc_above, is_oc_below;
+                bool is_oc_above = true, is_oc_below = true;
                 if (y == p_goal.y && x == p_goal.x)
                 { // goal found
                     foundGoal(node, path, p_goal);
@@ -295,12 +293,13 @@ namespace P2D::ANYA2
                         V2 pv(x, y);
                         kv = grid->coordToKey<false>(pv);
                         crn = crns.try_emplace(kv, pv);
-                        float_t new_g = node->g + y - root.y;
+                        float_t new_g = node->g + std::abs(y - root.y);
                         if (crn->min_g < new_g)
                         { // new_g is > minimum g at crn. stop flat node expansion
                             _dbg11("[Flat:" << y << "] Prepare to stop Flat Node search: New G$(" << new_g << ") from flat node root is >= crn min G$(" << crn->min_g << ")");
                             crn = nullptr;
                             stopped = true;
+                            is_oc = true;
                         }
                         else
                         {
@@ -343,8 +342,6 @@ namespace P2D::ANYA2
 
         inline bool _expandConeFindFlatSuccessors(Cone &cone, const V2 &p_goal)
         {
-            if (cone.root() == V2(165,305) && cone.dx() == 27)
-                _dbghelp;
             bool has_flat_successor = false;
             for (const int_t &sgn_y : {-1, 1})
             {
@@ -442,33 +439,45 @@ namespace P2D::ANYA2
                 // ====================== Add Turning Points on both (+y and -y) sides ======================
                 bool has_flat_successors = _expandConeFindFlatSuccessors(cone, p_goal);
 
-                // ====================== Determine first and last cell to check for cell row after interval =======================
+                // // ====================== Determine first and last cell to check for cell row after interval =======================
+                // if (cone.root() == V2(152, 497) && cone.dx() == 1)
+                //     _dbghelp;
                 int_t y_begin;
                 bool neg_out_of_map = false;
                 if (cone.negRayHasTail() == true)
                 {
                     y_begin = cone.negRayNextY() - 1;           // so that the cell is always in +dx +y direction of vertex
-                    int_t y_bound = grid->getBoundary<true>(6); // should be zero
+                    int_t y_bound = grid->getBoundary<false>(6); // should be zero
                     neg_out_of_map = y_begin < y_bound;
                     if (neg_out_of_map == true)
                         y_begin = y_bound;
                 }
                 else // neg ray has no tail
+                {
                     y_begin = cone.negRayCurY();
+                    //+1 if parallel, so the cone node can be found at the edge
+                    if (cone.sgnX() * det(V2(cone.dx(), y_begin - cone.root().y), cone.negRay()) == 0)
+                        --y_begin;
+                }
                 int_t y_end;
                 bool pos_out_of_map = false;
                 if (cone.posRayHasTail() == true)
                 {
                     y_end = cone.posRayNextY() + 1; // to exclude this last vertex
-                    int_t y_bound = grid->getBoundary<true>(2);
+                    int_t y_bound = grid->getBoundary<false>(2);
                     pos_out_of_map = y_end > y_bound;
                     if (pos_out_of_map == true)
                         y_end = y_bound;
                 }
                 else // pos ray has no tail
+                {
                     y_end = cone.posRayCurY();
+                    //+1 if parallel, so the cone node can be found at the edge
+                    if (cone.sgnX() * det(V2(cone.dx(), y_end - cone.root().y), cone.posRay()) == 0)
+                        ++y_end;
+                }
                 _dbg11("[Cone] Scan from YBegin(incl., vert)(" << y_begin << ") to YEnd(not incl., vert)(" << y_end << ")");
-                assert(y_end > y_begin); // cannot be opposite under current assumptions
+                assert(y_end >= y_begin); // cannot be opposite under current assumptions
 
                 dir_idx_t di = dirToDirIdx(cone.dx(), 1);
                 V2 vert_coord(cone.x(), y_begin);
@@ -483,8 +492,8 @@ namespace P2D::ANYA2
                 {
                     if (neg_out_of_map == true)
                     {
-                        const int_t &y_bound = grid->getBoundary<true>(6);
-                        intervals.emplace_back(V2(cone.xNext(), y_bound), V2(0, 0), 0b00);
+                        const int_t &y_bound = grid->getBoundary<false>(6);
+                        intervals.emplace_back(V2(cone.dxNext(), y_bound - cone.root().y), V2(0, 0), 0b00);
                     }
                     else
                         intervals.emplace_back(cone.negRay(), V2(0, 0), 0b10);
@@ -510,10 +519,11 @@ namespace P2D::ANYA2
                         if (new_neg_ray.y <= 0) // ray can point to next row
                             new_neg_ray.x += cone.sgnX();
 
-                        // if beyond pos_ray, stop scan, don't insert interval
-                        if (cone.sgnX() * det(new_neg_ray, cone.posRay()) <= 0)
+                        // if beyond pos_ray, stop scan, don't insert interval if pos ray has tail
+                        if (cone.posRayHasTail() == true && cone.sgnX() * det(new_neg_ray, cone.posRay()) <= 0)
                             break; // later cells will not result in any nodes.
                         else
+                            // cannot compare the new_neg_ray  to node +ray bcos the cone nodes require intervals to be placed and the intervals' +rays
                             intervals.emplace_back(new_neg_ray, V2(0, 0), 0b00); // if not beyond pos_ray, insert interval
                     }
                     else if (scanning_oc == false && is_oc == true)
@@ -527,9 +537,10 @@ namespace P2D::ANYA2
                             new_pos_ray.x += cone.sgnX();
 
                         // if the new pos ray is beyond or parallel to ray neg,  delete the interval
-                        if (cone.sgnX() * det(cone.negRay(), new_pos_ray) <= 0)
+                        if (cone.negRayHasTail() == true && cone.sgnX() * det(cone.negRay(), new_pos_ray) <= 0)
                             intervals.pop_back(); // no cone successor can be genereated
                         else
+                            // cannot compare the new_pos_ray  to node -ray bcos the cone nodes require intervals to be placed and the intervals' -rays
                             intervals.back().pos_ray = new_pos_ray;
                     }
                 }
@@ -538,8 +549,8 @@ namespace P2D::ANYA2
                 {
                     if (pos_out_of_map == true)
                     {
-                        const int_t &y_bound = grid->getBoundary<true>(2);
-                        intervals.back().pos_ray = V2(cone.xNext(), y_bound);
+                        const int_t &y_bound = grid->getBoundary<false>(2);
+                        intervals.back().pos_ray = V2(cone.dxNext(), y_bound - cone.root().y);
                     }
                     else
                     {
@@ -619,7 +630,6 @@ namespace P2D::ANYA2
                         }
                         else
                             _dbg11("[Cone] Cone node cannot be created at (" << vert_coord << ") bcos new G$(" << new_g << ") >= cur G$(" << new_crn->min_g << ")");
-
                     }
 
                     // ------- delete interval if the rays do not result in an angular sector
@@ -704,7 +714,7 @@ namespace P2D::ANYA2
 
             // Expand flat nodes and find cone nodes from start
             std::vector<V2> path = {};
-            if (expandStart(node_start, -1, p_goal, path) == false)   // -y expansion did not find goal
+            if (expandStart(node_start, -1, p_goal, path) == false)    // -y expansion did not find goal
                 if (expandStart(node_start, 1, p_goal, path) == false) // +y expansion did not find goal
                     while (true)
                     {

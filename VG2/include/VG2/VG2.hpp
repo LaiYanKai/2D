@@ -29,8 +29,8 @@ namespace P2D::VG2
             const mapkey_t rkv_y = grid->getRelKey<false>(2);
             const mapkey_t rkc_y = grid->getRelKey<true>(2);
 
-            int_t max_vx = grid->getBoundary<false>(0) - 2;
-            int_t max_vy = grid->getBoundary<false>(2) - 2;
+            int_t max_vx = grid->getBoundary<false>(0) - 1;
+            int_t max_vy = grid->getBoundary<false>(2) - 1;
             std::cout << "Finding Corners..." << std::flush;
             for (int_t vx = 1; vx <= max_vx; ++vx)
             {

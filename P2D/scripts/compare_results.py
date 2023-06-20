@@ -77,7 +77,7 @@ def main():
     for oracle_scen in oracle_scens:
         has_diff = False
         for other_scens in other_files:
-            if abs(other_scens[i].cost - oracle_scen.cost) > THRES:
+            if np.isnan(other_scens[i].cost) != np.isnan(oracle_scen.cost) or abs(other_scens[i].cost - oracle_scen.cost) > THRES:
                 print (other_scens[i])
                 has_diff = True
         if has_diff:

@@ -3,7 +3,11 @@
         {
             "name": "WSL",
             "includePath": [
-                "${workspaceFolder}/**/*"
+                "${workspaceFolder}/**/*",
+                "${workspaceFolder}/ANYA2/include/*",
+                "${workspaceFolder}/P2D/include/*",
+                "${workspaceFolder}/TS2/include/*",
+                "${workspaceFolder}/VG2/include/*"
             ],
             "cStandard": "c17",
             "cppStandard": "c++17",

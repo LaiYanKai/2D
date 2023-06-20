@@ -1,5 +1,5 @@
-WS=`echo "$( cd "$( dirname "$0" )" && pwd )"`
-echo "Workspace is $WS"
+WS=$(cd $(dirname $0) && pwd)
+echo "Working from $WS"
 cd $WS
 
 # make sure to chmod +x the python file and this script

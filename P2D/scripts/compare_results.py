@@ -12,7 +12,7 @@ def main():
 
     # ==================== ARGUMENTS ==============================
     parser = argparse.ArgumentParser(
-        description="Show scenarios that have different path lengths between compared result files. Use with --oracle and --others, or --name and --algs. If comparing files 'results/dao/arena.TS2B.results' and 'results/dao/arena.ANYA2B.results' to the oracle file 'results/dao/arena.VG2B.results', the script can be called in two ways: '--oracle results/dao/arena.VG2B.results --others results/dao/arena.TS2B.results results/dao/arena.ANYA2B.results' OR '--name results/dao/arena --algs VG2B TS2B ANYA2B' ",
+        description="Show scenarios if they have different path lengths between different algorithms (result files). Use either, --oracle and --others, or --name and --algs. E.g. when comparing files 'results/dao/arena.TS2B.results' and 'results/dao/arena.ANYA2B.results' to the oracle file 'results/dao/arena.VG2B.results', the arguments can be specified in two equivalent ways: '--oracle results/dao/arena.VG2B.results --others results/dao/arena.TS2B.results results/dao/arena.ANYA2B.results'    or    '--name results/dao/arena --algs VG2B TS2B ANYA2B' ",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
@@ -48,7 +48,7 @@ def main():
     parser.add_argument(
         "--print",
         "-p",
-        help="Output file path to print the comparisons to. Default is sysout (print to terminal)",
+        help="Output file path to print the differences to. If none is specified, the differences are printed to terminal",
         default=None,
         type=pathlib.Path,
     )
@@ -99,9 +99,10 @@ def main():
         for name in args.name:
             filepath = FilePaths()
             filepath.oracle_filepath = pathlib.Path(str(name) + "." + args.algs[0] + ".results")
+            filepath.other_filepaths = []
             for i in range(1, len(args.algs)):
                 filepath.other_filepaths.append( pathlib.Path(str(name) + "." + args.algs[i] + ".results"))
-        all_paths.append(filepath)
+            all_paths.append(filepath)
 
     # ==================== BUILD ORACLE FILE ======================
     for filepath in all_paths:
@@ -110,18 +111,17 @@ def main():
 
         print(f"Reading Oracle File: '{oracle_filepath}'")
         if oracle_filepath.is_dir():
-            print(f"'{oracle_filepath}' is a directory. No comparisons are done.")
-            return
+            print(f"'{oracle_filepath}' is a directory. No comparisons are done for this file.")
+            continue
         elif not oracle_filepath.exists():
-            print(f"'{oracle_filepath}' does not exist. No comparisons are done.")
-            return
+            print(f"'{oracle_filepath}' does not exist. No comparisons are done for this file.")
+            continue
 
         oracle_scens = []
         num_scens = 0
         with open(oracle_filepath, "r") as oracle_file:
             lines = oracle_file.read().splitlines()
             num_scens = len(lines)
-            # oracle_scens = [Scenario()] * num_scens
             for i in range(num_scens):
                 scen = Scenario()
                 scen.initFromLine(oracle_filepath.stem, i + 1, lines[i])
@@ -129,9 +129,9 @@ def main():
 
         if num_scens == 0:
             print(
-                f"Oracle file '{oracle_filepath}' has no scenarios. No comparisons are done."
+                f"Oracle file '{oracle_filepath}' has no scenarios. No comparisons are done for this file."
             )
-            return
+            continue
 
         # ==================== BUILD OTHER FILES ======================
         other_files = []
@@ -139,14 +139,14 @@ def main():
             print(f"Reading Other File: '{other_filepath}'")
             if other_filepath.is_dir():
                 print(
-                    f"'{other_filepath}' is a directory. No comparison is done for this file."
+                    f"'{other_filepath}' is a directory. No comparisons are done for this file."
                 )
-                return
+                continue
             elif not other_filepath.exists():
                 print(
-                    f"'{other_filepath}' does not exist. No comparison is done for this file."
+                    f"'{other_filepath}' does not exist. No comparisons are done for this file."
                 )
-                return
+                continue
             with open(other_filepath, "r") as other_file:
                 lines = other_file.read().splitlines()
                 if num_scens != len(oracle_scens):
@@ -163,6 +163,7 @@ def main():
 
         # ===================== COMPARE FILES ============================
         i = 0
+        has_differences = False
         for oracle_scen in oracle_scens:
             has_diff = False
             for other_scens in other_files:
@@ -172,11 +173,15 @@ def main():
                 ):
                     stream.write(repr(other_scens[i]) + "\n")
                     has_diff = True
+                    has_differences = True
             if has_diff:
                 stream.write(repr(oracle_scen) + "\n")
                 stream.write("------\n")
             i += 1
-
-
+        if has_differences:
+            print(f"[WARN] Some scenario(s) have different path lengths")
+        else:
+            print(f"[ OK ] All scenarios have the same path length")
+        print(f"--- Comparison with Oracle {oracle_filepath} done.")
 if __name__ == "__main__":
     main()

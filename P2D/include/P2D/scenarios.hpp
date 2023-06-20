@@ -179,14 +179,19 @@ namespace P2D
 
     // 0 for all, 1 for first scen, 2 for 2nd scen etc.
     template <class T>
-    void run(T *const &alg, Scenarios &scens, size_t scen_num)
+    void run(T *const &alg, Scenarios &scens, int scen_num)
     {
-        if (scen_num > scens.scens.size())
-            throw std::runtime_error("run: scen_num (" + std::to_string(scen_num) + ") is larger than number of scenarios (" + std::to_string(scens.scens.size()) + ")");
+        if (scen_num >= scens.scens.size())
+            throw std::runtime_error("run: scen_num (" + std::to_string(scen_num) + ") is >= number of scenarios (" + std::to_string(scens.scens.size()) + ")");
 
-        size_t scen_end = scen_num == 0 ? scens.scens.size() : scen_num;
-        if (scen_num > 0)
-            --scen_num;
+        int scen_end;
+        if (scen_num < 0)
+        {
+            scen_end = scens.scens.size();
+            scen_num = 0;
+        }
+        else
+            scen_end = scen_num + 1;
 
         std::cout << "=== runScenarios: " << scens.fp_name.string() << " ===" << std::endl;
 
@@ -215,9 +220,9 @@ namespace P2D
             std::cout << scens.fp_name.string();
             std::cout << std::fixed;
             std::cout << " [ ";
-            std::cout << std::setw(5) << scen_num + 1;
+            std::cout << std::setw(5) << scen_num;
             std::cout << " / ";
-            std::cout << std::setw(5) << scens.scens.size();
+            std::cout << std::setw(5) << scens.scens.size() - 1;
             std::cout << " ]: ( ";
             std::cout << std::setw(7) << dur_total.count();
             std::cout << " min ) ";

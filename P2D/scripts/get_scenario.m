@@ -1,7 +1,7 @@
 function S = get_scenario(results_dir, name, algo, scen)
 S = struct('nsec', nan, 'cost', nan, 'path', []);
-if scen <= 0
-    disp("Scen must be more than 0")
+if scen < 0
+    disp("Scen must be >= 0")
     return
 end
 results_filename = name + "." + algo + ".results";
@@ -11,7 +11,7 @@ if ~isfile(results_path)
     %     return
 end
 fid = fopen(results_path);
-for i = 1:(scen-1)
+for i = 1:scen
     fgetl(fid);
 end
 line = fgetl(fid);

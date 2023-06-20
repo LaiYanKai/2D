@@ -13,7 +13,7 @@ def main():
     )
     parser.add_argument(
         "--scenarios",
-        help="0 for all scenarios, >0 for scenario to print. Can be specified multiple times",
+        help="-1 for all scenarios, otherwise specify the scenario to print. Can be specified multiple times",
         type=scenario_num_type,
         nargs="*",
         default=0,
@@ -31,9 +31,9 @@ def main():
     all_scens = False
     if isinstance(args.scenarios, list):
         args.scenarios.sort()
-        all_scens = args.scenarios[0] == 0
+        all_scens = args.scenarios[0] < 0
     else:
-        all_scens = args.scenarios == 0
+        all_scens = args.scenarios < 0
 
     if all_scens:
         print(f"Showing results for all scenarios")
@@ -56,11 +56,11 @@ def main():
             print(f"{file_path.stem} has {len(lines)} scenario results")
 
             if all_scens:
-                args.scenarios = range(1, len(lines)+1)
+                args.scenarios = range(len(lines))
 
             for scen_num in args.scenarios:
                 scenario = Scenario()
-                scenario.initFromLine(file_path.stem, scen_num, lines[scen_num - 1])
+                scenario.initFromLine(file_path.stem, scen_num, lines[scen_num])
                 print(scenario)
 
 

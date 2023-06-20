@@ -38,9 +38,12 @@
 WS=`echo "$( cd "$( dirname "$0" )" && pwd )"`
 echo "Workspace is $WS"
 cd $WS
-
-# make sure to chmod +x the python file and this script
 FILE="P2D/scripts/compare_results.py"
 chmod +x $FILE
-./$FILE "$@" > compare_results.log
-echo "Output redirected to 'compare_results.log'"
+# make sure to chmod +x this script
+
+# ================ Use the compare_results directly ==========================
+# ./$FILE "$@" 
+
+# ================ Store all the different results we want to compare ======================
+./$FILE --name results/da2/lt_0_lowtown_a3_n_c --algs VG2B VG2N

@@ -1,7 +1,7 @@
 WS=$(cd $(dirname $0) && pwd)
 echo "Working from $WS"
 cd $WS
-FILE="P2D/scripts/compare_results.py"
+FILE="P2D/scripts/compare_costs.py"
 chmod +x $FILE
 # make sure to chmod +x this script
 

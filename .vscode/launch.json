@@ -27,7 +27,7 @@
         //     ], "type": "cppdbg", "request": "launch", "cwd": "${workspaceRoot}", "program": "${workspaceRoot}/build/Debug/run/run_exe", "preLaunchTask": "BuildDebug", "setupCommands": [{ "description": "Enable pretty-printing for gdb", "text": "-enable-pretty-printing", "ignoreFailures": true}]},
         
         
-        { "name": "ReleaseRun", "args": ["--algs", "VG2B", "--ids", "-1", "--names",
+        { "name": "ReleaseRun", "args": ["--algs", "ANYA2N", "--ids", "-1", "--names",
                 "dao/arena",
                 "dao/hrt201n",
                 "sc1/Aftershock",

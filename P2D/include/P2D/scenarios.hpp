@@ -56,23 +56,19 @@ namespace P2D
     };
     struct Scenarios
     {
-        std::filesystem::path fp_dir, fp_name, fp_alg;
+        std::filesystem::path fp_name, fp_alg;
         std::filesystem::path fp_scen, fp_map, fp_results;
         std::vector<Scenario> scens = {};
-        Scenarios(const std::string &dir, const std::string &name, const std::string &alg)
-            : fp_dir(dir), fp_name(name), fp_alg(alg)
-        {
-            fp_scen = "data";
-            fp_map = "data";
-            fp_results = "results";
-
-            fp_scen = fp_scen / fp_dir / fp_name;
-            fp_scen.replace_extension("map.scen");
-            fp_map = fp_map / fp_dir / fp_name;
-            fp_map.replace_extension("map");
-            fp_results = fp_results / fp_dir / fp_name;
-            fp_results.replace_extension(fp_alg.string() + ".results");
-        }
+        // Scenarios(const std::string &dir, const std::string &name, const std::string &alg)
+        //     : fp_dir(dir), fp_name(name), fp_alg(alg)
+        // {
+        //     fp_scen = fp_scen / fp_dir / fp_name;
+        //     fp_scen.replace_extension("map.scen");
+        //     fp_map = fp_map / fp_dir / fp_name;
+        //     fp_map.replace_extension("map");
+        //     fp_results = fp_results / fp_dir / fp_name;
+        //     fp_results.replace_extension(fp_alg.string() + ".results");
+        // }
     };
 
     void getScenarios(Scenarios &scens)
@@ -95,12 +91,12 @@ namespace P2D
         file.close();
     }
 
-    void getMap(Grid &grid, const Scenarios &scens)
+    void getMap(Grid &grid, std::filesystem::path fp_map)
     {
         // read from Benchmark
-        std::ifstream file(scens.fp_map);
+        std::ifstream file(fp_map);
         if (!file)
-            throw std::runtime_error("initBenchmark: '" + scens.fp_map.string() + "' cannot be found!");
+            throw std::runtime_error("initBenchmark: '" + fp_map.string() + "' cannot be found!");
 
         int_t size_x, size_y;
         std::string tmp;
@@ -150,32 +146,32 @@ namespace P2D
     }
 
     // from expt.sh, setups a vector of scenarios, with each element representing a benchmark map and its scenarios.
-    std::vector<Scenarios> getExperiment(const std::string &alg)
-    {
-        std::ifstream file("expt.sh");
-        if (!file)
-            throw std::runtime_error("expt.sh does not exist");
+    // std::vector<Scenarios> getExperiment(const std::string &alg)
+    // {
+    //     std::ifstream file("expt.sh");
+    //     if (!file)
+    //         throw std::runtime_error("expt.sh does not exist");
 
-        std::vector<Scenarios> expt;
-        std::string line;
-        while (std::getline(file, line))
-        {
-            std::istringstream iss(line);
-            std::string dir, name;
-            if (!(iss >> dir >> name))
-                continue; // error
+    //     std::vector<Scenarios> expt;
+    //     std::string line;
+    //     while (std::getline(file, line))
+    //     {
+    //         std::istringstream iss(line);
+    //         std::string dir, name;
+    //         if (!(iss >> dir >> name))
+    //             continue; // error
 
-            if (dir[0] == '#')
-                continue; // ignore comments
+    //         if (dir[0] == '#')
+    //             continue; // ignore comments
 
-            std::cout << dir << "/" << name << std::flush;
-            expt.emplace_back(dir, name, alg);
-            getScenarios(expt.back());
-            std::cout << " has " << expt.back().scens.size() << " scenarios " << std::endl;
-        }
+    //         std::cout << dir << "/" << name << std::flush;
+    //         expt.emplace_back(dir, name, alg);
+    //         getScenarios(expt.back());
+    //         std::cout << " has " << expt.back().scens.size() << " scenarios " << std::endl;
+    //     }
 
-        return expt;
-    }
+    //     return expt;
+    // }
 
     // 0 for all, 1 for first scen, 2 for 2nd scen etc.
     template <class T>

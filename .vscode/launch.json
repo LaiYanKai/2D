@@ -6,7 +6,7 @@
         // { "name": "ReleaseTS2", "type": "cppdbg", "request": "launch", "cwd": "${workspaceRoot}", "program": "${workspaceRoot}/build/Release/TS2/TS2_exe", "preLaunchTask": "BuildRelease"},
         // { "name": "DebugANYA2", "type": "cppdbg", "request": "launch", "cwd": "${workspaceRoot}", "program": "${workspaceRoot}/build/Debug/ANYA2/ANYA2_exe", "preLaunchTask": "BuildDebug", "setupCommands": [{ "description": "Enable pretty-printing for gdb","text": "-enable-pretty-printing","ignoreFailures": true} ]},
         // { "name": "ReleaseANYA2", "type": "cppdbg", "request": "launch", "cwd": "${workspaceRoot}", "program": "${workspaceRoot}/build/Release/ANYA2/ANYA2_exe", "preLaunchTask": "BuildRelease"},
-        { "name": "DebugRun", "type": "cppdbg", "request": "launch", "cwd": "${workspaceRoot}", "program": "${workspaceRoot}/build/Debug/run/run_exe", "preLaunchTask": "BuildDebug", "setupCommands": [{ "description": "Enable pretty-printing for gdb","text": "-enable-pretty-printing","ignoreFailures": true} ]},
+        { "name": "DebugRun", "args": ["--names", "sc1/Aurora", "sc1/Aftershock", "dao/arena", "--algs", "TS2B", "VG2B", "--id", "-1234", "0x2ab"], "type": "cppdbg", "request": "launch", "cwd": "${workspaceRoot}", "program": "${workspaceRoot}/build/Debug/run/run_exe", "preLaunchTask": "BuildDebug", "setupCommands": [{ "description": "Enable pretty-printing for gdb","text": "-enable-pretty-printing","ignoreFailures": true} ]},
         // { "name": "ReleaseRun", "type": "cppdbg", "request": "launch", "cwd": "${workspaceRoot}", "program": "${workspaceRoot}/build/Release/run/run_exe", "preLaunchTask": "BuildRelease"},
     ]
 }

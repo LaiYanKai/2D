@@ -27,7 +27,7 @@ namespace P2D
             return ss.str();
         }
     };
-    extern __Debug __dbg;
+    inline __Debug __dbg(LOG_PATH);
 #define _dbgreset P2D::__dbg.reset()
 #define _dbginc ++P2D::__dbg.tabs
 #define _dbgdec                  \

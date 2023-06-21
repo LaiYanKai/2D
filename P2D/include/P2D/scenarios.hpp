@@ -181,7 +181,7 @@ namespace P2D
     template <class T>
     void run(T *const &alg, Scenarios &scens, int scen_num)
     {
-        if (scen_num >= scens.scens.size())
+        if (scen_num >= int(scens.scens.size()))
             throw std::runtime_error("run: scen_num (" + std::to_string(scen_num) + ") is >= number of scenarios (" + std::to_string(scens.scens.size()) + ")");
 
         int scen_end;

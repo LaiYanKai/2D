@@ -18,6 +18,12 @@ struct Args
 
 inline bool isOption(const std::string &test) { return test.size() > 2 && test.substr(0, 2) == "--"; }
 
+bool isValidOption(const std::string &option)
+{
+    return (option == "--results_dir" || option == "--map_dir" || option == "--scen_dir" || option == "--names" || option == "--algs" || option == "--ids");
+    // else
+    //     throw std::runtime_error("Invalid option: " + option);
+}
 void parseOption(Args &args, const std::string &option, int &arg_idx, const int &argc, char **&argv)
 {
     assert(isOption(option));
@@ -29,8 +35,10 @@ void parseOption(Args &args, const std::string &option, int &arg_idx, const int 
             break;
 
         std::string arg(argv[arg_idx]);
-        if (isOption(arg))
+        if (isOption(arg) == true)
         {
+            if (isValidOption(arg) == false)
+                throw std::runtime_error("Invalid option: " + arg);
             parseOption(args, arg, ++arg_idx, argc, argv);
             break;
         }
@@ -64,7 +72,7 @@ void parseOption(Args &args, const std::string &option, int &arg_idx, const int 
             else
                 throw std::out_of_range("--algs must be one of the following: VG2B, VG2N, TS2B, TS2N, ANYA2B, ANYA2N, R2, R2E");
         }
-        else if (option == "--id")
+        else if (option == "--ids")
         {
             if (args.ids.empty() == true || args.ids.back() != -1)
             {
@@ -74,36 +82,38 @@ void parseOption(Args &args, const std::string &option, int &arg_idx, const int 
                 else
                     args.ids.push_back(id);
             }
-            else if (args.empty() == true)
-            {
-                args.ids.push_back(std::stoi(arg));
-                
-            }
         }
-        else
-            throw std::runtime_error("Invalid option: " + option);
-        std::cout << option << ": " << arg << std::endl;
 
         ++arg_idx;
     }
 }
+void parseOptions(Args &args, const int &argc, char **&argv)
+{
+    int arg_idx = 1;
+    std::string option(argv[arg_idx]);
+    if (isOption(option) == true)
+    {
+        if (isValidOption(option) == false)
+            throw std::runtime_error("Invalid option: " + option);
+        parseOption(args, option, ++arg_idx, argc, argv);
+    }
+    else
+        throw std::runtime_error(std::string("Must start with a '--' option, and not '") + option + "'");
+}
 
 int main(int argc, char *argv[])
 {
-    int arg_idx = 1;
     Args args;
-
-    std::string option(argv[arg_idx]);
-    if (isOption(option))
-        parseOption(args, option, ++arg_idx, argc, argv);
-    else
-        throw std::runtime_error(std::string("Must start with a '--' option, and not '") + option + "'");
+    parseOptions(args, argc, argv);
 
     if (args.names.empty() == true)
         throw std::out_of_range("At least one file must be specified for --names. If a pair of scenario file 'arena.map.scen' and map file 'arena.map' are to be run, and the files are located in the sub-directory 'dao', then the argument is: '--name dao/arena'. Specify other pairs with spaces: '--name dao/arena da2/ht_mansion2b sc1/Aurora'");
 
     if (args.algs.empty() == true)
         throw std::out_of_range("At least one file must be specified for --algs. If 'TS2B' is to be run, the argument is '--algs TS2B'. Multiple algorithms can be specified: '--algs TS2B ANYA2B VG2B'");
+
+    if (args.ids.empty() == true)
+        args.ids = {-1};
 
     // check if scen file and map file exists
     std::vector<std::array<std::filesystem::path, 3>> fpaths;
@@ -140,12 +150,14 @@ int main(int argc, char *argv[])
             if (alg == "TS2B")
             {
                 P2D::TS2::TS2<true> alg(&grid);
-                P2D::run(&alg, scens, args.id);
+                for (int id : args.ids)
+                    P2D::run(&alg, scens, id);
             }
             else if (alg == "TS2N")
             {
                 P2D::TS2::TS2<false> alg(&grid);
-                P2D::run(&alg, scens, args.id);
+                for (int id : args.ids)
+                    P2D::run(&alg, scens, id);
             }
             else if (alg == "VG2B")
             {
@@ -154,7 +166,8 @@ int main(int argc, char *argv[])
                 fp_vg.replace_extension(".VG2B.combinations");
 
                 P2D::VG2::VG2<true> alg(&grid, fp_vg);
-                P2D::run(&alg, scens, args.id);
+                for (int id : args.ids)
+                    P2D::run(&alg, scens, id);
             }
             else if (alg == "VG2N")
             {
@@ -163,17 +176,20 @@ int main(int argc, char *argv[])
                 fp_vg.replace_extension(".VG2N.combinations");
 
                 P2D::VG2::VG2<false> alg(&grid, fp_vg);
-                P2D::run(&alg, scens, args.id);
+                for (int id : args.ids)
+                    P2D::run(&alg, scens, id);
             }
             else if (alg == "ANYA2B")
             {
                 P2D::ANYA2::ANYA2<true> alg(&grid);
-                P2D::run(&alg, scens, args.id);
+                for (int id : args.ids)
+                    P2D::run(&alg, scens, id);
             }
             else if (alg == "ANYA2N")
             {
                 P2D::ANYA2::ANYA2<false> alg(&grid);
-                P2D::run(&alg, scens, args.id);
+                for (int id : args.ids)
+                    P2D::run(&alg, scens, id);
             }
             else if (alg == "R2")
             {
@@ -183,6 +199,9 @@ int main(int argc, char *argv[])
             }
             else
                 throw std::out_of_range("Invalid algorithm: " + alg.string());
+
+            if (args.ids.front() == -1)
+                P2D::writeResults(scens);
         }
     }
     return 0;

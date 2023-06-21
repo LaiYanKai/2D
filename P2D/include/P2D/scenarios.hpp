@@ -214,6 +214,7 @@ namespace P2D
 
             // feedback
             std::cout << scens.fp_name.string();
+            std::cout << "." << scens.fp_alg.string();
             std::cout << std::fixed;
             std::cout << " [ ";
             std::cout << std::setw(5) << scen_num;

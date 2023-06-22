@@ -14,4 +14,5 @@ set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DP2D_DEBUG -DANYA2_DEBUG")
 # target_compile_options(ANYA2_exe PRIVATE -Wall -Wextra -Wpedantic) #linux only
 
 add_library(ANYA2_LIB INTERFACE)
+target_link_libraries(ANYA2_LIB INTERFACE P2D_LIB)
 target_include_directories(ANYA2_LIB INTERFACE include)

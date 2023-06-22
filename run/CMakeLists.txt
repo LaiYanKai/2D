@@ -9,6 +9,6 @@ set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DP2D_DEBUG")
 
 add_executable(run_exe main.cpp)
 target_include_directories(run_exe PRIVATE include)
-target_link_libraries(run_exe PRIVATE P2D_LIB ANYA2_LIB VG2_LIB TS2_LIB)
+target_link_libraries(run_exe PRIVATE P2D_LIB ANYA2_LIB VG2_LIB TS2_LIB R2_LIB)
 target_compile_features(run_exe PRIVATE cxx_std_17)
 target_compile_options(run_exe PRIVATE -Wall -Wextra -Wpedantic) #linux only

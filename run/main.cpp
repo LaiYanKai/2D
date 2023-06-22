@@ -5,10 +5,10 @@
 #include <assert.h>
 
 #include "P2D/P2D.hpp"
-#include "VG2/VG2.hpp"
-#include "ANYA2/ANYA2.hpp"
-#include "TS2/TS2.hpp"
-
+// #include "VG2/VG2.hpp"
+// #include "ANYA2/ANYA2.hpp"
+// #include "TS2/TS2.hpp"
+#include "R2/R2.hpp"
 struct Args
 {
     std::filesystem::path results_dir = "results", map_dir = "data", scen_dir = "data";
@@ -147,52 +147,53 @@ int main(int argc, char *argv[])
             scens.fp_results.replace_extension(alg.string() + ".results");
             P2D::getScenarios(scens);
 
-            if (alg == "TS2B")
-            {
-                P2D::TS2::TS2<true> alg(&grid);
-                for (int id : args.ids)
-                    P2D::run(&alg, scens, id);
-            }
-            else if (alg == "TS2N")
-            {
-                P2D::TS2::TS2<false> alg(&grid);
-                for (int id : args.ids)
-                    P2D::run(&alg, scens, id);
-            }
-            else if (alg == "VG2B")
-            {
-                std::filesystem::path fp_vg = "VG2/combinations";
-                fp_vg = fp_vg / scens.fp_name;
-                fp_vg.replace_extension(".VG2B.combinations");
+            // if (alg == "TS2B")
+            // {
+            //     P2D::TS2::TS2<true> alg(&grid);
+            //     for (int id : args.ids)
+            //         P2D::run(&alg, scens, id);
+            // }
+            // else if (alg == "TS2N")
+            // {
+            //     P2D::TS2::TS2<false> alg(&grid);
+            //     for (int id : args.ids)
+            //         P2D::run(&alg, scens, id);
+            // }
+            // else if (alg == "VG2B")
+            // {
+            //     std::filesystem::path fp_vg = "VG2/combinations";
+            //     fp_vg = fp_vg / scens.fp_name;
+            //     fp_vg.replace_extension(".VG2B.combinations");
 
-                P2D::VG2::VG2<true> alg(&grid, fp_vg);
-                for (int id : args.ids)
-                    P2D::run(&alg, scens, id);
-            }
-            else if (alg == "VG2N")
-            {
-                std::filesystem::path fp_vg = "VG2/combinations";
-                fp_vg = fp_vg / scens.fp_name;
-                fp_vg.replace_extension(".VG2N.combinations");
+            //     P2D::VG2::VG2<true> alg(&grid, fp_vg);
+            //     for (int id : args.ids)
+            //         P2D::run(&alg, scens, id);
+            // }
+            // else if (alg == "VG2N")
+            // {
+            //     std::filesystem::path fp_vg = "VG2/combinations";
+            //     fp_vg = fp_vg / scens.fp_name;
+            //     fp_vg.replace_extension(".VG2N.combinations");
 
-                P2D::VG2::VG2<false> alg(&grid, fp_vg);
-                for (int id : args.ids)
-                    P2D::run(&alg, scens, id);
-            }
-            else if (alg == "ANYA2B")
+            //     P2D::VG2::VG2<false> alg(&grid, fp_vg);
+            //     for (int id : args.ids)
+            //         P2D::run(&alg, scens, id);
+            // }
+            // else if (alg == "ANYA2B")
+            // {
+            //     P2D::ANYA2::ANYA2<true> alg(&grid);
+            //     for (int id : args.ids)
+            //         P2D::run(&alg, scens, id);
+            // }
+            // else if (alg == "ANYA2N")
+            // {
+            //     P2D::ANYA2::ANYA2<false> alg(&grid);
+            //     for (int id : args.ids)
+            //         P2D::run(&alg, scens, id);
+            // }
+            if (alg == "R2")
             {
-                P2D::ANYA2::ANYA2<true> alg(&grid);
-                for (int id : args.ids)
-                    P2D::run(&alg, scens, id);
-            }
-            else if (alg == "ANYA2N")
-            {
-                P2D::ANYA2::ANYA2<false> alg(&grid);
-                for (int id : args.ids)
-                    P2D::run(&alg, scens, id);
-            }
-            else if (alg == "R2")
-            {
+
             }
             else if (alg == "R2E")
             {

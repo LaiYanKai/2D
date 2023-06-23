@@ -9,3 +9,4 @@
 #include "openlist.hpp"
 #include "scenarios.hpp"
 #include "los.hpp"
+#include "los_advanced.hpp"

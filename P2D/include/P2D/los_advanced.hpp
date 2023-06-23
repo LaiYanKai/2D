@@ -1,7 +1,11 @@
-#include "P2D/P2D.hpp"
+#include "types.hpp"
+#include "math.hpp"
+#include "dir_idx.hpp"
+#include "Vec2.hpp"
+#include "grid.hpp"
 
 #pragma once
-namespace P2D::R2
+namespace P2D
 {
     struct LosResult
     {
@@ -11,8 +15,9 @@ namespace P2D::R2
         bool collided = false;
     };
 
+    // Advanced LOS that returns collided vertices and direction of next trace from collision point.
     // diag_block is specified for non-inverted case. If diag_block == false, no diag_block occurs when passing over free cells (inverted == false), but diag_block occurs when passing over occupied cells (inverted == true)
-    class Los
+    class LosAdvanced
     {
     private:
         Grid *const grid;
@@ -131,8 +136,7 @@ namespace P2D::R2
         }
 
         // returns true if the front is blocked, or diagonally blocked.
-        // Set check_start_diag_block to true if diag_block_at_start is set to true and the function is called before the main loop in searchOrdinal
-        template <bool invert, bool check_start_diag_block, bool diag_block>
+        template <bool invert, bool diag_block_at_start, bool diag_block, bool first_check>
         inline bool _ordinalObstructedFront(const dir_idx_t &di_long, const dir_idx_t &di_short, const dir_idx_t &di_front, const bool &dim_l,
                                             const mapkey_t &cell_key, const mapkey_t &rel_nlcell_key, const mapkey_t &rel_nscell_key,
                                             const int_t &err_s, [[maybe_unused]] const V2 &src_coord) const
@@ -141,7 +145,7 @@ namespace P2D::R2
             if (front_ob == false)
             {
                 bool check_diag_block;
-                if constexpr (check_start_diag_block == true)
+                if constexpr (diag_block_at_start == true && first_check == true)
                 {
                     assert(err_s == 0);
                     bool nl_in_map = grid->getBoundary<false>(addDirIdx(di_long, 4)) != src_coord[dim_l];
@@ -160,12 +164,12 @@ namespace P2D::R2
                     return isObstructed<invert>(nlcell_key) == true && isObstructed<invert>(nscell_key) == true;
                 }
             }
-            return front_oc;
+            return front_ob;
         }
 
         // returns the collided result
         template <bool invert>
-        inline bool _ordinalObstructedFrontResult(const bool &is_rh_frame, const dir_idx_t &di_front,
+        inline bool _ordinalObstructedFrontResult(const bool &is_rh_frame, const dir_idx_t &di_front, const V2 &vert_coord,
                                                   const mapkey_t &cell_key, const mapkey_t &rel_nlcell_key, const mapkey_t &rel_nscell_key, const int_t &err_s) const
         {
 
@@ -204,7 +208,7 @@ namespace P2D::R2
                     di_right = addDirIdx(di_front, is_rh_frame == true ? 5 : 7);
                 }
                 else
-                { // nl_ob == false && ns_ob == false (ncv)if (abs_dir.x == abs_dir.y)
+                {     // nl_ob == false && ns_ob == false (ncv)if (abs_dir.x == abs_dir.y)
                     { // parallel to normal of corner
                         di_left = addDirIdx(di_front, 3);
                         di_right = addDirIdx(di_front, 5);
@@ -215,12 +219,27 @@ namespace P2D::R2
                         di_right = addDirIdx(di_front, is_rh_frame == true ? 7 : 5);
                     }
                 }
+                return getCollidedResult(vert_coord, vert_coord, di_left, di_right);
             }
             else
-            {   // hit wall
-
+            { // hit wall that points in +short direction
+                V2 coord_left, coord_right;
+                if (is_rh_frame == true)
+                {
+                    coord_right = vert_coord;
+                    di_left = addDirIdx(di_front, 1);
+                    di_right = addDirIdx(di_front, 5);
+                    coord_left = grid->getRelCoord(di_left) + vert_coord;
+                }
+                else
+                {
+                    coord_left = vert_coord;
+                    di_left = addDirIdx(di_front, 3);
+                    di_right = addDirIdx(di_front, 7);
+                    coord_right = grid->getRelCoord(di_right) + vert_coord;
+                }
             }
-            return getCollidedResult();
+            return getCollidedResult(coord_left, coord_right, di_left, di_right);
         }
 
         template <bool invert, bool cast, bool diag_block, bool diag_block_at_start>
@@ -232,17 +251,18 @@ namespace P2D::R2
 
             const V2 sgn_dir = P2D::sgn(dir);
             const V2 abs_dir = P2D::abs(dir);
-            const bool is_rhframe = (sgn_dir.x > 0 == sgn_dir.y > 0) == (abs_dir.x > abs_dir.y); // right hand frame (long axis lies right of short axis when superimposed on cartesian space)
-            const dir_idx_t di_long = addDirIdx(di_front, is_rhframe == true ? 7 : 1);
-            const dir_idx_t di_short = addDirIdx(di_front, is_rhframe == true ? 1 : 7);
+            const bool is_rh_frame = (sgn_dir.x > 0 == sgn_dir.y > 0) == (abs_dir.x > abs_dir.y); // right hand frame (long axis lies right of short axis when superimposed on cartesian space)
+            const dir_idx_t di_long = addDirIdx(di_front, is_rh_frame == true ? 7 : 1);
+            const dir_idx_t di_short = addDirIdx(di_front, is_rh_frame == true ? 1 : 7);
 
-            // -------- Determine last vertex key ----------
-            mapkey_t vert_key = src_key;
-            mapkey_t last_vert_key;
+            // -------- Determine last cell key ----------
+            mapkey_t cell_key = grid->addKeyToRelKey(src_key, grid->getCellRelKey(di_front, src_coord.x));
+            mapkey_t last_cell_key;
             if constexpr (cast == true)
-                last_vert_key = tgt_key;
+                last_cell_key = grid->addKeyToRelKey(tgt_key, grid->getCellRelKey(di_front, tgt_coord.x));
             else
-            { // last_vert_key is dependent on the point the cast exists the map
+            { // find where the last vert_key is, find the difference between the last vert_key and src_hey, and get the relative cell key using the difference
+                // last_vert_key is dependent on the point the projection exits the map
                 // The difference between the long direction grid boundary and the src long coordinate, if the projection collides at the long direction's grid boundary
                 const int_t diff_long_long = grid->getBoundary<false>(di_long) - src_coord[dim_l];
                 // The difference between the short direction grid boundary and the src short coordinate, if the projection collides at the short direction's grid boundary
@@ -250,22 +270,22 @@ namespace P2D::R2
                 // The floored difference between the short direction grid boundary and the src long coordinate, if the projection collides at the short direction's grid boundary
                 const int_t diff_long_short = diff_short_short * dir[dim_l] / dir[!dim_l];
 
-                if (diff_long_long >= diff_long_short)
+                if (std::abs(diff_long_long) >= std::abs(diff_long_short))
                 { // collide at the short direction's grid boundary. Last vertex is determined by diff_short_short and diff_long_short
-                    last_vert_key = grid->getKey<false>(src_key,
-                                                        dim_l == 0 ? diff_long_short : diff_short_short,
-                                                        dim_l == 0 ? diff_short_short : diff_long_short);
+                    last_cell_key = grid->getKey<true>(cell_key,
+                                                       dim_l == 0 ? diff_long_short : diff_short_short,
+                                                       dim_l == 0 ? diff_short_short : diff_long_short);
                 }
                 else
                 {
                     const int_t diff_short_long = diff_long_long * dir[!dim_l] / dir[dim_l];
-                    last_vert_key = grid->getKey<false>(src_key,
-                                                        dim_l == 0 ? diff_long_long : diff_short_long,
-                                                        dim_l == 0 ? diff_short_long : diff_long_long);
+                    last_cell_key = grid->getKey<true>(cell_key,
+                                                       dim_l == 0 ? diff_long_long : diff_short_long,
+                                                       dim_l == 0 ? diff_short_long : diff_long_long);
                 }
             }
 
-            if (vert_key == last_vert_key) // for bozos who start casting at the edge of the map, or src_coord == tgt_coord;
+            if (cell_key == last_cell_key) // for bozos who start casting at the edge of the map, or src_coord == tgt_coord;
                 return getNotCollidedResult();
 
             const mapkey_t &rel_nlcell_key = grid->getRelKey<true>(addDirIdx(di_long, 4));
@@ -275,8 +295,72 @@ namespace P2D::R2
             const mapkey_t &rel_lvert_key = grid->getRelKey<false>(di_long);
             const mapkey_t &rel_svert_key = grid->getRelKey<false>(di_short);
             bool nlcell_ob, nrcell_ob;
-            mapkey_t cell_key = grid->addKeyToRelKey(src_key, grid->getCellRelKey(di_front, src_coord.x));
             int_t err_s = 0;
+            const int_t &abs_dir_short = abs_dir[!dim_l];
+            const int_t &abs_dir_long = abs_dir[dim_l];
+
+            // ================== check the front cell and diagonal blocking before loop =========================
+            if (_ordinalObstructedFront<invert, diag_block_at_start, diag_block, true>(
+                    di_long, di_short, di_front, dim_l, cell_key, rel_nlcell_key, rel_nscell_key, err_s, src_coord))
+                return _ordinalObstructedFrontResult(is_rh_frame, di_front, vert_coord, cell_Key, rel_nlcell_key, rel_nscell_key, err_s);
+
+            // do main while loop
+            while (1)
+            {
+                err_s += abs_dir_short;
+                // ================== Increment in short if required =====================
+                if (err_s == abs_dir_long)
+                {
+                    cell_key = grid->addKeyToRelKey(cell_key, rel_scell_key);
+                    err_s = 0;
+                }
+                else if (err_s > abs_dir_long)
+                {
+                    cell_key = grid->addKeyToRelKey(cell_key, rel_scell_key);
+                    // check cell in short direction
+                    err_s -= abs_dir_long;
+
+                    // ------------ check if projection and went out of map ----------------------
+                    if (cast == false && cell_key == last_cell_key) // projection and went out of map
+                        return getNotCollidedResult();
+
+                    // ------------ check if collide with wall parallel to long axis ----------------------
+                    if (isObstructed<true>(cell_key) == true)
+                    {
+                        dir_idx_t di_left, di_right;
+                        V2 coord_left, coord_right;
+                        if (is_rh_frame == true)
+                        {
+                            di_left = addDirIdx(di_front, 3);
+                            di_right = addDirIdx(di_front, 7);
+                            coord_left = grid->keyToCoord<true>(cell_key);
+                            coord_left += grid->getVertexRelCoord(addDirIdx(di_front, 4));
+                            coord_right = coord_left + grid->getRelCoord(di_long);
+                        }
+                        else
+                        {
+                            di_left = addDirIdx(di_front, 1);
+                            di_right = addDirIdx(di_front, 5);
+                            coord_right = grid->keyToCoord<true>(cell_key);
+                            coord_right += grid->getVertexRelCoord(addDirIdx(di_front, 4));
+                            coord_left = coord_right + grid->getRelCoord(di_long);
+                        }
+                        return getCollidedResult(coord_Left, coord_right, di_left, di_right);
+                    }
+                }
+
+                // ================== Increment in long =====================
+                cell_key = grid->addKeyToRelKey(cell_key, rel_lcell_key);
+
+                // ================== Return if OOM or reached target ===========================
+                if (cell_key == last_cell_key)
+                    return getNotCollidedResult(); // cast reached target or projection went out of map
+
+                // ================== check the front cell and diagonal blocking before loop =========================
+                if (_ordinalObstructedFront<invert, diag_block_at_start, diag_block, false>(
+                        di_long, di_short, di_front, dim_l, cell_key, rel_nlcell_key, rel_nscell_key, err_s, src_coord))
+                    return _ordinalObstructedFrontResult(is_rh_frame, di_front, vert_coord, cell_Key, rel_nlcell_key, rel_nscell_key, err_s);
+            }
         }
 
         template <bool invert, bool cast, bool diag_block, bool diag_block_at_start>
@@ -296,23 +380,25 @@ namespace P2D::R2
         }
 
     public:
-        Los(Grid *const &grid) : grid(grid) {}
+        LosAdvanced(Grid *const &grid) : grid(grid) {}
 
         // cast from Src in the direction src->tgt to Tgt
         template <bool invert, bool diag_block, bool diag_block_at_start>
-        LosResult cast(const V2 &src_coord, const mapkey_t &src_key, const V2 &tgt_coord, const mapkey_t &tgt_key) const
+        inline LosResult cast(const V2 &src_coord, const mapkey_t &src_key, const V2 &tgt_coord, const mapkey_t &tgt_key) const
         {
+            return search<invert, true, diag_block, diag_block_at_start>(src_coord, src_key, tgt_coord, tgt_key);
         }
 
         // project from Tgt in the direction src->tgt
         template <bool invert, bool diag_block, bool diag_block_at_start>
-        LosResult project(const V2 &src_coord, const mapkey_t &src_key, const V2 &tgt_coord, const mapkey_t &tgt_key) const
+        inline LosResult project(const V2 &src_coord, const mapkey_t &src_key, const V2 &tgt_coord, const mapkey_t &tgt_key) const
         {
+            return search<invert, false, diag_block, diag_block_at_start>(src_coord, src_key, tgt_coord, tgt_key);
         }
     };
 
     // template <bool is_proj, bool find_successors, bool is_blocking>
-    // class Los : public P2D::Los2::Base<false>
+    // class LosAdvanced : public P2D::Los2::Base<false>
     // { // no is_blocking, return state; assumes path traversed is in map
     //   // using eod_t = typename std::conditional<is_proj, V2, Position>::type;
 
@@ -965,7 +1051,7 @@ namespace P2D::R2
     //     }
 
     // public:
-    //     Los(OcGrid<false> *grid) : Base(grid) {}
+    //     LosAdvanced(OcGrid<false> *grid) : Base(grid) {}
     //     void cast(const Ray *const &ray, LosInfo &linfo)
     //     {
     //         V2 diff = ray->vec;

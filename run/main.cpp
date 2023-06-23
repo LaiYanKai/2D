@@ -193,10 +193,15 @@ int main(int argc, char *argv[])
             // }
             if (alg == "R2")
             {
-
+                P2D::R2::R2<false> alg(&grid);
+                for (int id : args.ids)
+                    P2D::run(&alg, scens, id);
             }
             else if (alg == "R2E")
             {
+                P2D::R2::R2<true> alg(&grid);
+                for (int id : args.ids)
+                    P2D::run(&alg, scens, id);
             }
             else
                 throw std::out_of_range("Invalid algorithm: " + alg.string());

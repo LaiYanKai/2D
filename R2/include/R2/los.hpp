@@ -80,13 +80,6 @@ namespace P2D::R2
                 return false;
             };
 
-            // --------------- Setup Lambda (Updating the window) ---------------
-            inline auto getWindow = [&]() -> void
-            {
-                window |= (left_in_map == false || isObstructed<invert>(flcell_key)) << 1;
-                window |= (right_in_map == false || isObstructed<invert>(frcell_key));
-            };
-
             // --------------- Get the first cell keys, and check the first coord for diagonal blocking, if required ---------------
             if constexpr (diag_block == true && diag_block_at_start == true)
             {
@@ -116,7 +109,9 @@ namespace P2D::R2
             // ------------------- Loop until front blocked or reached / out_of_map
             do
             {
-                getWindow();
+                // ------------ get window -----------------
+                window |= (left_in_map == false || isObstructed<invert>(flcell_key)) << 1;
+                window |= (right_in_map == false || isObstructed<invert>(frcell_key));
 
                 // ------ Check if front is blocked ----------
                 bool front_blocked;
@@ -133,6 +128,99 @@ namespace P2D::R2
 
             // not collided (reached / out of map)
             return getNotCollidedResult();
+        }
+
+        // returns true if the front is blocked, or diagonally blocked.
+        // Set check_start_diag_block to true if diag_block_at_start is set to true and the function is called before the main loop in searchOrdinal
+        template <bool invert, bool check_start_diag_block, bool diag_block>
+        inline bool _ordinalObstructedFront(const dir_idx_t &di_long, const dir_idx_t &di_short, const dir_idx_t &di_front, const bool &dim_l,
+                                            const mapkey_t &cell_key, const mapkey_t &rel_nlcell_key, const mapkey_t &rel_nscell_key,
+                                            const int_t &err_s, [[maybe_unused]] const V2 &src_coord) const
+        {
+            const bool front_ob = isObstructed<invert>(cell_key);
+            if (front_ob == false)
+            {
+                bool check_diag_block;
+                if constexpr (check_start_diag_block == true)
+                {
+                    assert(err_s == 0);
+                    bool nl_in_map = grid->getBoundary<false>(addDirIdx(di_long, 4)) != src_coord[dim_l];
+                    bool ns_in_map = grid->getBoundary<false>(addDirIdx(di_short, 4)) != src_coord[!dim_l];
+                    mapkey_t bcell_key = grid->addKeyToRelKey(cell_key, addDirIdx(di_front, 4));
+                    check_diag_block = nl_in_map && ns_in_map && isObstructed<invert>(bcell_key) == false; // diagonal block requires checkerboard corners
+                }
+                else
+                    check_diag_block = diag_block;
+
+                // check diagonal blocking, if required
+                if (check_diag_block == true && err_s == 0)
+                {
+                    mapkey_t nlcell_key = grid->addKeyToRelKey(cell_key, rel_nlcell_key); // cell in -long direction from current cell
+                    mapkey_t nscell_key = grid->addKeyToRelKey(cell_key, rel_nscell_key); // cell in -short direction from current cell
+                    return isObstructed<invert>(nlcell_key) == true && isObstructed<invert>(nscell_key) == true;
+                }
+            }
+            return front_oc;
+        }
+
+        // returns the collided result
+        template <bool invert>
+        inline bool _ordinalObstructedFrontResult(const bool &is_rh_frame, const dir_idx_t &di_front,
+                                                  const mapkey_t &cell_key, const mapkey_t &rel_nlcell_key, const mapkey_t &rel_nscell_key, const int_t &err_s) const
+        {
+
+            dir_idx_t di_left, di_right;
+            // (1) ray passes through vertex
+            if (err_s == 0)
+            {
+                mapkey_t lcell_key = grid->addKeyToRelKey(cell_key, rel_nlcell_key);
+                mapkey_t rcell_key = grid->addKeyToRelKey(cell_key, rel_nscell_key);
+                bool nl_ob = isObstructed<invert>(nlcell_key);
+                bool ns_ob = isObstructed<invert>(nscell_key);
+
+                // (1a) if nl (left) and ns (right) are blocked (nonconvex)
+                if (nl_ob == true && ns_ob == true)
+                {
+                    if (abs_dir.x == abs_dir.y)
+                    { // parallel to normal of corner
+                        di_left = addDirIdx(di_front, 1);
+                        di_right = addDirIdx(di_front, 7);
+                    }
+                    else
+                    { // not parallel to normal of corner, hitting the wall on the -short side first
+                        di_left = addDirIdx(di_front, is_rh_frame == true ? 1 : 3);
+                        di_right = addDirIdx(di_front, is_rh_frame == true ? 5 : 7);
+                    }
+                }
+                // (1b) if nl (left) and ns (right) are blocked,
+                else if (nl_ob == true && ns_ob == false)
+                {
+                    di_left = addDirIdx(di_front, is_rh_frame == true ? 3 : 1);
+                    di_right = addDirIdx(di_front, is_rh_frame == true ? 7 : 5);
+                }
+                else if (nl_ob == false && ns_ob == true)
+                {
+                    di_left = addDirIdx(di_front, is_rh_frame == true ? 1 : 3);
+                    di_right = addDirIdx(di_front, is_rh_frame == true ? 5 : 7);
+                }
+                else
+                { // nl_ob == false && ns_ob == false (ncv)if (abs_dir.x == abs_dir.y)
+                    { // parallel to normal of corner
+                        di_left = addDirIdx(di_front, 3);
+                        di_right = addDirIdx(di_front, 5);
+                    }
+                    else
+                    { // not parallel to normal of corner, hitting the wall on the +long side first
+                        di_left = addDirIdx(di_front, is_rh_frame == true ? 3 : 1);
+                        di_right = addDirIdx(di_front, is_rh_frame == true ? 7 : 5);
+                    }
+                }
+            }
+            else
+            {   // hit wall
+
+            }
+            return getCollidedResult();
         }
 
         template <bool invert, bool cast, bool diag_block, bool diag_block_at_start>
@@ -186,42 +274,9 @@ namespace P2D::R2
             const mapkey_t &rel_scell_key = grid->getRelKey<true>(di_short);
             const mapkey_t &rel_lvert_key = grid->getRelKey<false>(di_long);
             const mapkey_t &rel_svert_key = grid->getRelKey<false>(di_short);
+            bool nlcell_ob, nrcell_ob;
             mapkey_t cell_key = grid->addKeyToRelKey(src_key, grid->getCellRelKey(di_front, src_coord.x));
             int_t err_s = 0;
-
-             // ---------------- Lambda (returns true if front is obstructed) ----------------------------
-            inline auto isObstructedFront = [&](const bool &checking_diag_block_start) -> bool
-            {
-                const bool front_oc = isObstructed<invert>(cell_key);
-                if (front_oc == false)
-                {
-                    if (checking_diag_block_start == true)
-                    {
-                        bool nl_in_map = grid->getBoundary<false>(addDirIdx(di_long, 4)) != src_coord[dim_l];
-                        bool ns_in_map = grid->getBoundary<false>(addDirIdx(di_short, 4)) != src_coord[!dim_l];
-                        mapkey_t bcell_key = grid->addKeyToRelKey(cell_key, addDirIdx(di_front, 4));
-                        check_diag_block = nl_in_map && ns_in_map && isObstructed<invert>(bcell_key) == false; // diagonal block requires checkerboard corners
-                    }
-                    else
-                        check_diag_block = diag_block;
-
-                    // check diagonal blocking, if required
-                    if (check_diag_block == true)
-                    {
-                        mapkey_t nlcell_key = grid->addKeyToRelKey(cell_key, rel_nlcell_key);
-                        mapkey_t nscell_key = grid->addKeyToRelKey(cell_key, rel_nscell_key);
-                        return isObstructed<invert>(nlcell_key) == true && isObstructed<invert>(nscell_key) == true;
-                    }
-                }
-                return front_oc;
-            };
-
-             // ---------------- Lambda (returns result when the front is blocked) ----------------------------
-            inline auto getObstructedFrontResult [&]() -> LosResult
-            {
-                LosResult getCollidedResult();
-                return res;
-            }
         }
 
         template <bool invert, bool cast, bool diag_block, bool diag_block_at_start>
@@ -265,7 +320,7 @@ namespace P2D::R2
     //     template <bool to_coord>
     //     inline void emplaceSuccessor(const dir_idx_t &rel_from_fwd_dir_idx, const dir_idx_t &fwd_dir_idx, Position &pos, std::vector<Pose> &successors)
     //     {
-    //         dir_idx_t crn_dir_idx = addDirIdx<true>(fwd_dir_idx, rel_from_fwd_dir_idx);
+    //         dir_idx_t crn_dir_idx = addDirIdx(fwd_dir_idx, rel_from_fwd_dir_idx);
     //         if constexpr (to_coord)
     //             pos.coord = grid->keyToCoord<V2>(pos.key);
     //         else
@@ -303,8 +358,8 @@ namespace P2D::R2
     //             longer_end = crn_tgt.coord[longer_dim];
 
     //         // get directional information
-    //         dir_idx_t l_dir_idx = addDirIdx<true>(fwd_dir_idx, 2);
-    //         dir_idx_t r_dir_idx = addDirIdx<true>(fwd_dir_idx, 6);
+    //         dir_idx_t l_dir_idx = addDirIdx(fwd_dir_idx, 2);
+    //         dir_idx_t r_dir_idx = addDirIdx(fwd_dir_idx, 6);
     //         bool left_in_map = grid->inMap<false>(crn_src.coord[shorter_dim] + grid->getAdjRelCoord(l_dir_idx)[shorter_dim], l_dir_idx);
     //         bool right_in_map = grid->inMap<false>(crn_src.coord[shorter_dim] + grid->getAdjRelCoord(r_dir_idx)[shorter_dim], r_dir_idx);
     //         const mapkey_t &rel_f_key = grid->getAdjRelKey(fwd_dir_idx); // vertex or cell in long direction
@@ -318,10 +373,10 @@ namespace P2D::R2
     //         if (left_in_map && right_in_map)
     //         {
     //             // inits
-    //             dir_idx_t fl_dir_idx = addDirIdx<true>(fwd_dir_idx, 1);
+    //             dir_idx_t fl_dir_idx = addDirIdx(fwd_dir_idx, 1);
     //             const mapkey_t &rcfv_fl_key = grid->getAdjRelKeyCFV(fl_dir_idx);
     //             mapkey_t flcell_key = grid->addKeyToRelKey(crn_src.mkey, rcfv_fl_key); // cell at front Side::L of vertex
-    //             dir_idx_t fr_dir_idx = addDirIdx<true>(fwd_dir_idx, 7);
+    //             dir_idx_t fr_dir_idx = addDirIdx(fwd_dir_idx, 7);
     //             const mapkey_t &rcfv_fr_key = grid->getAdjRelKeyCFV(fr_dir_idx);
     //             mapkey_t frcell_key = grid->addKeyToRelKey(crn_src.mkey, rcfv_fr_key); // cell at front Side::R of vertex
 
@@ -332,7 +387,7 @@ namespace P2D::R2
     //             {
     //                 if (addDirIdx(crn_src.di_occ, 1) == fwd_dir_idx || addDirIdx(crn_src.di_occ, 7) == fwd_dir_idx)
     //                 {
-    //                     dir_idx_t bl_dir_idx = addDirIdx<true>(fwd_dir_idx, 3);
+    //                     dir_idx_t bl_dir_idx = addDirIdx(fwd_dir_idx, 3);
     //                     V2 blcell_coord = pos.coord + grid->getAdjRelCoordCFV(bl_dir_idx); // can be out of map
     //                     bool blcell_not_acc = !grid->inMap<true>(blcell_coord);
     //                     if (blcell_not_acc == false)
@@ -342,7 +397,7 @@ namespace P2D::R2
     //                         blcell_not_acc = grid->isOc(blcell_key);
     //                     }
 
-    //                     dir_idx_t br_dir_idx = addDirIdx<true>(fwd_dir_idx, 5);
+    //                     dir_idx_t br_dir_idx = addDirIdx(fwd_dir_idx, 5);
     //                     V2 brcell_coord = pos.coord + grid->getAdjRelCoordCFV(br_dir_idx); // can be out of map
     //                     bool brcell_not_acc = !grid->inMap<true>(brcell_coord);
     //                     if (brcell_not_acc == false)
@@ -419,7 +474,7 @@ namespace P2D::R2
     //                     if constexpr (is_proj == false)
     //                     {
     //                         assert((fwd_dir_idx & 1) == 0); // is cardinal
-    //                         if (crn_tgt.is_convex == false && (addDirIdx<true>(fwd_dir_idx, 3) == crn_tgt.di_occ || addDirIdx<true>(fwd_dir_idx, 5) == crn_tgt.di_occ))
+    //                         if (crn_tgt.is_convex == false && (addDirIdx(fwd_dir_idx, 3) == crn_tgt.di_occ || addDirIdx(fwd_dir_idx, 5) == crn_tgt.di_occ))
     //                         { // check against pseudo in a 2x2 checkerboard pattern. reject if ncv di_occ is reverse of fwd_dir_idx
     //                             cardinalFrontBlocked(pos, l_dir_idx, r_dir_idx, linfo, grid);
     //                             return; // mark as collided
@@ -437,7 +492,7 @@ namespace P2D::R2
     //         // ------------- Case 2: ONLY LEFT SIDE IN MAP  -------------
     //         else if (left_in_map)
     //         {
-    //             dir_idx_t fl_dir_idx = addDirIdx<true>(fwd_dir_idx, 1);
+    //             dir_idx_t fl_dir_idx = addDirIdx(fwd_dir_idx, 1);
     //             const mapkey_t &rcfv_fl_key = grid->getAdjRelKeyCFV(fl_dir_idx);
     //             mapkey_t flcell_key = grid->addKeyToRelKey(crn_src.mkey, rcfv_fl_key); // cell at front Side::L of vertex
 
@@ -459,7 +514,7 @@ namespace P2D::R2
     //         // ------------- Case 3: ONLY RIGHT SIDE IN MAP  -------------
     //         else
     //         {
-    //             dir_idx_t fr_dir_idx = addDirIdx<true>(fwd_dir_idx, 7);
+    //             dir_idx_t fr_dir_idx = addDirIdx(fwd_dir_idx, 7);
     //             const mapkey_t &rcfv_fr_key = grid->getAdjRelKeyCFV(fr_dir_idx);
     //             mapkey_t frcell_key = grid->addKeyToRelKey(crn_src.mkey, rcfv_fr_key); // cell at front Side::L of vertex
 
@@ -524,10 +579,10 @@ namespace P2D::R2
     //         const mapkey_t &rel_short_key = grid->getAdjRelKey(shorter_dir_idx); // vertex / cell in short direction
     //         const mapkey_t &rel_long_key = grid->getAdjRelKey(longer_dir_idx);   // vertex / cell in long direction
 
-    //         dir_idx_t l_dir_idx = addDirIdx<true>(fwd_dir_idx, 2);
+    //         dir_idx_t l_dir_idx = addDirIdx(fwd_dir_idx, 2);
     //         const mapkey_t &rcfv_l_key = grid->getAdjRelKeyCFV(l_dir_idx); // left cell from vertex
 
-    //         dir_idx_t r_dir_idx = addDirIdx<true>(fwd_dir_idx, 6);
+    //         dir_idx_t r_dir_idx = addDirIdx(fwd_dir_idx, 6);
     //         const mapkey_t &rcfv_r_key = grid->getAdjRelKeyCFV(r_dir_idx); // right cell from vertex
 
     //         // init at src
@@ -544,7 +599,7 @@ namespace P2D::R2
 
     //         //  get forward cell
     //         mapkey_t fcell_key = grid->addKeyToRelKey(pos.key, rcfv_f_key); // must be in map already
-    //         bool fcell_is_oc = grid->isOc(fcell_key);                       // must be in map already
+    //         bool fcell_is_ob = grid->isOc(fcell_key);                       // must be in map already
 
     //         if constexpr (is_blocking)
     //         {                                                                    // check the existing location if there is diagonal block
@@ -557,7 +612,7 @@ namespace P2D::R2
     //             V2 rcell_coord = pos.coord + grid->getAdjRelCoordCFV(r_dir_idx); // can be out of map
     //             window |= grid->isAccessible(rcell_coord);
     //             window <<= 1;
-    //             V2 bcell_coord = pos.coord + grid->getAdjRelCoordCFV(addDirIdx<true>(fwd_dir_idx, 4));
+    //             V2 bcell_coord = pos.coord + grid->getAdjRelCoordCFV(addDirIdx(fwd_dir_idx, 4));
     //             window |= grid->isAccessible(bcell_coord);
 
     //             if (window == 0b0101 && crn_src.di_occ == fwd_dir_idx)
@@ -565,18 +620,18 @@ namespace P2D::R2
     //                 dir_idx_t ltrace_dir_idx, rtrace_dir_idx;
     //                 if (abs_diff[0] == abs_diff[1])
     //                 {
-    //                     ltrace_dir_idx = addDirIdx<true>(fwd_dir_idx, 1);
-    //                     rtrace_dir_idx = addDirIdx<true>(fwd_dir_idx, 7);
+    //                     ltrace_dir_idx = addDirIdx(fwd_dir_idx, 1);
+    //                     rtrace_dir_idx = addDirIdx(fwd_dir_idx, 7);
     //                 }
     //                 else if (isRightHandFrame(sgn_diff, longer_dim))
     //                 {
-    //                     ltrace_dir_idx = addDirIdx<true>(fwd_dir_idx, 1);
-    //                     rtrace_dir_idx = addDirIdx<true>(fwd_dir_idx, 5);
+    //                     ltrace_dir_idx = addDirIdx(fwd_dir_idx, 1);
+    //                     rtrace_dir_idx = addDirIdx(fwd_dir_idx, 5);
     //                 }
     //                 else
     //                 {
-    //                     ltrace_dir_idx = addDirIdx<true>(fwd_dir_idx, 3);
-    //                     rtrace_dir_idx = addDirIdx<true>(fwd_dir_idx, 7);
+    //                     ltrace_dir_idx = addDirIdx(fwd_dir_idx, 3);
+    //                     rtrace_dir_idx = addDirIdx(fwd_dir_idx, 7);
     //                 }
 
     //                 // ----------- (3) fill information ----------
@@ -587,13 +642,13 @@ namespace P2D::R2
     //             }
     //             else if (window == 0b1010)
     //             { // even tho front is blocked, this case will not be picked out bcos algo doesn't check the back.
-    //                 bool trace_left = addDirIdx<true>(fwd_dir_idx, 6) == crn_src.di_occ;
+    //                 bool trace_left = addDirIdx(fwd_dir_idx, 6) == crn_src.di_occ;
     //                 if (trace_left == false)
-    //                     assert(addDirIdx<true>(fwd_dir_idx, 2) == crn_src.di_occ); // for all start and ncv corners. make sure start has a diocc and is not zero in this case. assumes casts do not occur from goal
+    //                     assert(addDirIdx(fwd_dir_idx, 2) == crn_src.di_occ); // for all start and ncv corners. make sure start has a diocc and is not zero in this case. assumes casts do not occur from goal
 
     //                 dir_idx_t ltrace_dir_idx, rtrace_dir_idx;
-    //                 ltrace_dir_idx = addDirIdx<true>(fwd_dir_idx, trace_left ? 1 : 3);
-    //                 rtrace_dir_idx = addDirIdx<true>(fwd_dir_idx, trace_left ? 5 : 7);
+    //                 ltrace_dir_idx = addDirIdx(fwd_dir_idx, trace_left ? 1 : 3);
+    //                 rtrace_dir_idx = addDirIdx(fwd_dir_idx, trace_left ? 5 : 7);
 
     //                 // ----------- (3) fill information ----------
     //                 linfo.fill(LosState::collided,
@@ -602,7 +657,7 @@ namespace P2D::R2
     //                 return;
     //             }
 
-    //             // if (fcell_is_oc == false && crn_src.di_occ == fwd_dir_idx)
+    //             // if (fcell_is_ob == false && crn_src.di_occ == fwd_dir_idx)
     //             // {
     //             //     V2 lcell_coord = pos.coord + grid->getAdjRelCoordCFV(l_dir_idx); // can be out of map
     //             //     bool lcell_not_acc = !grid->inMap<true>(lcell_coord);
@@ -659,43 +714,43 @@ namespace P2D::R2
     //                     case 0b00: // hit a corner
     //                         if (abs_diff[0] == abs_diff[1])
     //                         {
-    //                             ltrace_dir_idx = addDirIdx<true>(fwd_dir_idx, 3);
-    //                             rtrace_dir_idx = addDirIdx<true>(fwd_dir_idx, 5);
+    //                             ltrace_dir_idx = addDirIdx(fwd_dir_idx, 3);
+    //                             rtrace_dir_idx = addDirIdx(fwd_dir_idx, 5);
     //                         }
     //                         else if (isRightHandFrame(sgn_diff, longer_dim))
     //                         {
-    //                             ltrace_dir_idx = addDirIdx<true>(fwd_dir_idx, 3);
-    //                             rtrace_dir_idx = addDirIdx<true>(fwd_dir_idx, 7);
+    //                             ltrace_dir_idx = addDirIdx(fwd_dir_idx, 3);
+    //                             rtrace_dir_idx = addDirIdx(fwd_dir_idx, 7);
     //                         }
     //                         else
     //                         {
-    //                             ltrace_dir_idx = addDirIdx<true>(fwd_dir_idx, 1);
-    //                             rtrace_dir_idx = addDirIdx<true>(fwd_dir_idx, 5);
+    //                             ltrace_dir_idx = addDirIdx(fwd_dir_idx, 1);
+    //                             rtrace_dir_idx = addDirIdx(fwd_dir_idx, 5);
     //                         }
     //                         break;
     //                     case 0b01: // hit a wall
-    //                         ltrace_dir_idx = addDirIdx<true>(fwd_dir_idx, 1);
-    //                         rtrace_dir_idx = addDirIdx<true>(fwd_dir_idx, 5);
+    //                         ltrace_dir_idx = addDirIdx(fwd_dir_idx, 1);
+    //                         rtrace_dir_idx = addDirIdx(fwd_dir_idx, 5);
     //                         break;
     //                     case 0b10: // hit a wall
-    //                         ltrace_dir_idx = addDirIdx<true>(fwd_dir_idx, 3);
-    //                         rtrace_dir_idx = addDirIdx<true>(fwd_dir_idx, 7);
+    //                         ltrace_dir_idx = addDirIdx(fwd_dir_idx, 3);
+    //                         rtrace_dir_idx = addDirIdx(fwd_dir_idx, 7);
     //                         break;
     //                     default: // 0b11 // hit a ncv // if both oom it is an oom case
     //                         if (abs_diff[0] == abs_diff[1])
     //                         {
-    //                             ltrace_dir_idx = addDirIdx<true>(fwd_dir_idx, 1);
-    //                             rtrace_dir_idx = addDirIdx<true>(fwd_dir_idx, 7);
+    //                             ltrace_dir_idx = addDirIdx(fwd_dir_idx, 1);
+    //                             rtrace_dir_idx = addDirIdx(fwd_dir_idx, 7);
     //                         }
     //                         else if (isRightHandFrame(sgn_diff, longer_dim))
     //                         {
-    //                             ltrace_dir_idx = addDirIdx<true>(fwd_dir_idx, 1);
-    //                             rtrace_dir_idx = addDirIdx<true>(fwd_dir_idx, 5);
+    //                             ltrace_dir_idx = addDirIdx(fwd_dir_idx, 1);
+    //                             rtrace_dir_idx = addDirIdx(fwd_dir_idx, 5);
     //                         }
     //                         else
     //                         {
-    //                             ltrace_dir_idx = addDirIdx<true>(fwd_dir_idx, 3);
-    //                             rtrace_dir_idx = addDirIdx<true>(fwd_dir_idx, 7);
+    //                             ltrace_dir_idx = addDirIdx(fwd_dir_idx, 3);
+    //                             rtrace_dir_idx = addDirIdx(fwd_dir_idx, 7);
     //                         }
     //                         break;
     //                     }
@@ -708,11 +763,11 @@ namespace P2D::R2
     //                     if (lcell_in_map)
     //                     {
     //                         mapkey_t lcell_key = grid->addKeyToRelKey(pos.key, rcfv_l_key);
-    //                         bool lcell_is_oc = grid->isOc(lcell_key);
-    //                         ltrace_dir_idx = lcell_is_oc ? addDirIdx<true>(fwd_dir_idx, 3) : addDirIdx<true>(fwd_dir_idx, 1);
+    //                         bool lcell_is_ob = grid->isOc(lcell_key);
+    //                         ltrace_dir_idx = lcell_is_ob ? addDirIdx(fwd_dir_idx, 3) : addDirIdx(fwd_dir_idx, 1);
     //                     }
     //                     else
-    //                         ltrace_dir_idx = addDirIdx<true>(fwd_dir_idx, 3); // trace will go out of map
+    //                         ltrace_dir_idx = addDirIdx(fwd_dir_idx, 3); // trace will go out of map
 
     //                     // ------------ (2) RIGHT --------------
     //                     V2 rcell_coord = pos.coord + grid->getAdjRelCoordCFV(r_dir_idx); // can be out of map
@@ -721,11 +776,11 @@ namespace P2D::R2
     //                     if (rcell_in_map)
     //                     {
     //                         mapkey_t rcell_key = grid->addKeyToRelKey(pos.key, rcfv_r_key);
-    //                         bool rcell_is_oc = grid->isOc(rcell_key);
-    //                         rtrace_dir_idx = rcell_is_oc ? addDirIdx<true>(fwd_dir_idx, 5) : addDirIdx<true>(fwd_dir_idx, 7);
+    //                         bool rcell_is_ob = grid->isOc(rcell_key);
+    //                         rtrace_dir_idx = rcell_is_ob ? addDirIdx(fwd_dir_idx, 5) : addDirIdx(fwd_dir_idx, 7);
     //                     }
     //                     else
-    //                         rtrace_dir_idx = addDirIdx<true>(fwd_dir_idx, 5);
+    //                         rtrace_dir_idx = addDirIdx(fwd_dir_idx, 5);
     //                     */
 
     //                     // ----------- (3) fill information ----------
@@ -742,8 +797,8 @@ namespace P2D::R2
     //                         mapkey_t left_trace_key = grid->addKeyToRelKey(pos.key, rel_short_key);
 
     //                         linfo.fill(LosState::collided,
-    //                                    addDirIdx<true>(fwd_dir_idx, 1), left_trace_coord[0], left_trace_coord[1], left_trace_key,
-    //                                    addDirIdx<true>(fwd_dir_idx, 5), pos.coord[0], pos.coord[1], pos.key);
+    //                                    addDirIdx(fwd_dir_idx, 1), left_trace_coord[0], left_trace_coord[1], left_trace_key,
+    //                                    addDirIdx(fwd_dir_idx, 5), pos.coord[0], pos.coord[1], pos.key);
     //                     }
     //                     else
     //                     {
@@ -752,8 +807,8 @@ namespace P2D::R2
     //                         mapkey_t right_trace_key = grid->addKeyToRelKey(pos.key, rel_short_key);
 
     //                         linfo.fill(LosState::collided,
-    //                                    addDirIdx<true>(fwd_dir_idx, 3), pos.coord[0], pos.coord[1], pos.key,
-    //                                    addDirIdx<true>(fwd_dir_idx, 7), right_trace_coord[0], right_trace_coord[1], right_trace_key);
+    //                                    addDirIdx(fwd_dir_idx, 3), pos.coord[0], pos.coord[1], pos.key,
+    //                                    addDirIdx(fwd_dir_idx, 7), right_trace_coord[0], right_trace_coord[1], right_trace_key);
     //                     }
     //                 }
     //                 return;
@@ -775,7 +830,7 @@ namespace P2D::R2
     //                 pos.key = grid->addKeyToRelKey(pos.key, rel_short_key);
     //                 // (2) check cell in forward direction adjacent to edge
     //                 fcell_key = grid->addKeyToRelKey(pos.key, rcfv_f_key);
-    //                 fcell_is_oc = grid->isOc(fcell_key);
+    //                 fcell_is_ob = grid->isOc(fcell_key);
     //                 if (fcell_is_oc)
     //                 { // collide with grid edge that is parallel to long axis
     //                     // calculate coordinate
@@ -788,8 +843,8 @@ namespace P2D::R2
     //                         mapkey_t right_trace_key = grid->addKeyToRelKey(pos.key, rel_long_key);
 
     //                         linfo.fill(LosState::collided,
-    //                                    addDirIdx<true>(fwd_dir_idx, 3), pos.coord[0], pos.coord[1], pos.key,
-    //                                    addDirIdx<true>(fwd_dir_idx, 7), right_trace_coord[0], right_trace_coord[1], right_trace_key);
+    //                                    addDirIdx(fwd_dir_idx, 3), pos.coord[0], pos.coord[1], pos.key,
+    //                                    addDirIdx(fwd_dir_idx, 7), right_trace_coord[0], right_trace_coord[1], right_trace_key);
     //                     }
     //                     else
     //                     {
@@ -797,8 +852,8 @@ namespace P2D::R2
     //                         left_trace_coord[longer_dim] = pos.coord[longer_dim] + sgn_diff[longer_dim];
     //                         mapkey_t left_trace_key = grid->addKeyToRelKey(pos.key, rel_long_key);
     //                         linfo.fill(LosState::collided,
-    //                                    addDirIdx<true>(fwd_dir_idx, 1), left_trace_coord[0], left_trace_coord[1], left_trace_key,
-    //                                    addDirIdx<true>(fwd_dir_idx, 5), pos.coord[0], pos.coord[1], pos.key);
+    //                                    addDirIdx(fwd_dir_idx, 1), left_trace_coord[0], left_trace_coord[1], left_trace_key,
+    //                                    addDirIdx(fwd_dir_idx, 5), pos.coord[0], pos.coord[1], pos.key);
     //                     }
     //                     return;
     //                 }
@@ -819,8 +874,8 @@ namespace P2D::R2
     //                     assert((fwd_dir_idx & 1) == 1); // cannot be cardinal
     //                     if (crn_tgt.is_convex == false && crn_tgt.di_occ != fwd_dir_idx)
     //                     {                                                              // check against pseudo in a 2x2 checkerboard pattern. reject if ncv di_occ is reverse of fwd_dir_idx
-    //                         assert(crn_tgt.di_occ == addDirIdx<true>(fwd_dir_idx, 4)); // has to be opposite, cannot reach ncv from within the obstacle
-    //                         fcell_is_oc = true;
+    //                         assert(crn_tgt.di_occ == addDirIdx(fwd_dir_idx, 4)); // has to be opposite, cannot reach ncv from within the obstacle
+    //                         fcell_is_ob = true;
     //                         continue; // mark as collided
     //                     }
     //                 }
@@ -829,45 +884,45 @@ namespace P2D::R2
 
     //             // (F) get forward cell information
     //             fcell_key = grid->addKeyToRelKey(pos.key, rcfv_f_key);
-    //             fcell_is_oc = grid->isOc(fcell_key);
+    //             fcell_is_ob = grid->isOc(fcell_key);
     //             // (G) evaluate if Pose is found
     //             if (err_s == 0 && !fcell_is_oc)
     //             { // forward is free and path intersects vertex
     //                 // placed here to avoid evaluating at src's coordinate ==> the cell behind the vertex is free to reach here
     //                 mapkey_t lcell_key = grid->addKeyToRelKey(pos.key, rcfv_l_key);
     //                 mapkey_t rcell_key = grid->addKeyToRelKey(pos.key, rcfv_r_key);
-    //                 bool lcell_is_oc = grid->isOc(lcell_key);
-    //                 bool rcell_is_oc = grid->isOc(rcell_key);
+    //                 bool lcell_is_ob = grid->isOc(lcell_key);
+    //                 bool rcell_is_ob = grid->isOc(rcell_key);
 
     //                 if constexpr (is_blocking)
     //                 {
-    //                     uint8_t window = (lcell_is_oc << 1) | rcell_is_oc;
+    //                     uint8_t window = (lcell_is_ob << 1) | rcell_is_oc;
     //                     switch (window)
     //                     {
     //                     case 0b11:
     //                         // is_blocking
     //                         pos.coord = grid->keyToCoord(pos.key);
     //                         // linfo.fill(LosState::collided,
-    //                         //           addDirIdx<true>(fwd_dir_idx, 3), pos,
-    //                         //           addDirIdx<true>(fwd_dir_idx, 5), pos);
+    //                         //           addDirIdx(fwd_dir_idx, 3), pos,
+    //                         //           addDirIdx(fwd_dir_idx, 5), pos);
 
     //                         if (abs_diff[0] == abs_diff[1])
     //                         {
     //                             linfo.fill(LosState::collided,
-    //                                        addDirIdx<true>(fwd_dir_idx, 1), pos,
-    //                                        addDirIdx<true>(fwd_dir_idx, 7), pos);
+    //                                        addDirIdx(fwd_dir_idx, 1), pos,
+    //                                        addDirIdx(fwd_dir_idx, 7), pos);
     //                         }
     //                         else if (isRightHandFrame(sgn_diff, longer_dim))
     //                         {
     //                             linfo.fill(LosState::collided,
-    //                                        addDirIdx<true>(fwd_dir_idx, 1), pos,
-    //                                        addDirIdx<true>(fwd_dir_idx, 5), pos);
+    //                                        addDirIdx(fwd_dir_idx, 1), pos,
+    //                                        addDirIdx(fwd_dir_idx, 5), pos);
     //                         }
     //                         else
     //                         {
     //                             linfo.fill(LosState::collided,
-    //                                        addDirIdx<true>(fwd_dir_idx, 3), pos,
-    //                                        addDirIdx<true>(fwd_dir_idx, 7), pos);
+    //                                        addDirIdx(fwd_dir_idx, 3), pos,
+    //                                        addDirIdx(fwd_dir_idx, 7), pos);
     //                         }
     //                         return;
     //                     case 0b10:

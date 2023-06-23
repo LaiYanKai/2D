@@ -1,60 +1,40 @@
 #include "P2D/P2D.hpp"
+#include "types.hpp"
 #include <unordered_map>
 
 #pragma once
-namespace P2D::T2
+namespace P2D::R2
 {
-    using crnkey_t = uint32_t;
-    inline crnkey_t getCrnKey(const mapkey_t &mkey, const dir_idx_t &di_occ) noexcept { return (crnkey_t(mkey) << 3) | di_occ; }
+    using crnkey_t = mapkey_t;
+    inline crnkey_t getCrnKey(const mapkey_t &mapkey, const dir_idx_t &di_occ) noexcept
+    {
+        return (mapkey << 3) | di_occ;
+    }
 
     class Node;
-    class Corner
+    struct Corner
     {
-
-    public:
-        V2 coord = {0, 0};
+        V2 coord = {0,0};
         Node *node = nullptr;
-        Corner *nb_left = nullptr, *nb_right = nullptr;
-        mapkey_t mkey = 0;
-        dir_idx_t di = 0;
-        bool convex = false;
+        Corner *left = nullptr, *right = nullptr;
+        mapkey_t mkey = -1;
+        bool is_convex = false;
+        dir_idx_t di_occ = 0;
 
-        // full constructor
-        Corner(const V2 &coord, Node *const &node, Corner *const &crn_l, Corner *const &crn_r, const mapkey_t &mkey, const dir_idx_t &di, const bool &convex)
-            : coord(coord), node(node), nb_left(nb_left), nb_right(nb_right), mkey(mkey), di(di), convex(convex) {}
-        // constructor from trace
-        Corner(const V2 &coord, const mapkey_t &mkey, const dir_idx_t &di, const bool &convex) : coord(coord), mkey(mkey), di(di), convex(convex) {}
-        // default constructor
+        Corner(const bool &is_convex, const mapkey_t &mkey, const dir_idx_t &di_occ, const V2 &coord)
+            : coord(coord), mkey(mkey), is_convex(is_convex), di_occ(di_occ) {}
         Corner() {}
 
-        inline Corner *&neighbor(const Side &side) { return side == Side::L ? nb_left : nb_right; }
-        inline Corner *const &neighbor(const Side &side) const { return side == Side::L ? nb_left : nb_right; }
+        inline Corner *&trace(const Side &side) { return side == Side::L ? left : right; }
+        inline Corner *const &trace(const Side &side) const { return side == Side::L ? left : right; }
         inline dir_idx_t edgeDi(const Side &side) const
         {
-            return this->convex ? addDirIdx(this->di, side == Side::L ? 1 : 7) : addDirIdx<true>(this->di, side == Side::L ? 3 : 5);
+            return this->is_convex ? addDirIdx<true>(this->di_occ, side == Side::L ? 1 : 7) : addDirIdx<true>(this->di_occ, side == Side::L ? 3 : 5);
         }
-        inline V2 edgeVec(const Side &side) const { return dirIdxToDir(this->edgeDi(side)); }
-
-        friend std::ostream &operator<<(std::ostream &out, const Corner &crn)
-        {
-            if (crn.di == 0)
-                out << "#";
-            else
-                out << (crn.convex ? "+" : "-"); // << int(crn.di_occ) ;
-            out << crn.coord;                    // << "|" << std::setw(10) << std::setfill('0') << crn.mkey << std::setfill(' ');
-            return out;
-        }
+        inline V2 edgeVec(const Side &side) const { return dirIdxToDir<V2>(this->edgeDi(side)); }
     };
-
-    inline const Corner null_crn = Corner();
-    inline std::ostream &operator<<(std::ostream &out, const Corner *const &crn)
-    {
-        if (crn == nullptr)
-            out << "    NA    ";
-        else
-            out << *crn;
-        return out;
-    }
+    std::ostream &operator<<(std::ostream &out, const Corner &crn);
+    std::ostream &operator<<(std::ostream &out, const Corner *const &crn);
 
     class Corners
     {
@@ -64,8 +44,8 @@ namespace P2D::T2
     public:
         inline std::pair<Corner *, bool> tryEmplace(const Corner &crn) // does not copy adjacent corners
         {
-            crnkey_t ckey = getCrnKey(crn.mkey, crn.di);
-            auto p = _data.try_emplace(ckey, crn.coord, crn.mkey, crn.di, crn.convex);
+            crnkey_t ckey = getCrnKey(crn.mkey, crn.di_occ);
+            auto p = _data.try_emplace(ckey, crn.is_convex, crn.mkey, crn.di_occ, crn.coord);
             return std::make_pair(&(p.first->second), p.second);
         }
         inline void clear() { _data.clear(); }

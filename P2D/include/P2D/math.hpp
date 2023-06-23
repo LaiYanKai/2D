@@ -48,9 +48,9 @@ namespace P2D
         return ss.str();
     }
 
-    // returns true if val1 + THRES is gt val2
-    inline bool approxGt(const float_t &val1, const float_t &val2) { return val1 - THRES > val2; }
     // returns true if val1 - THRES is gt val2
+    inline bool approxGt(const float_t &val1, const float_t &val2) { return val1 - THRES > val2; }
+    // returns true if val1 + THRES is gt val2
     inline bool approxGe(const float_t &val1, const float_t &val2) { return val1 + THRES > val2; }
     // returns true if abs(val1 - val2) < THRES*2
     inline bool approxEq(const float_t &val1, const float_t &val2) { return std::abs(val1 - val2) < THRES * 2; }

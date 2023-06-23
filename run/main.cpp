@@ -193,13 +193,13 @@ int main(int argc, char *argv[])
             // }
             if (alg == "R2")
             {
-                P2D::R2::R2<false> alg(&grid);
+                P2D::R2::R2 alg(&grid, false);
                 for (int id : args.ids)
                     P2D::run(&alg, scens, id);
             }
             else if (alg == "R2E")
             {
-                P2D::R2::R2<true> alg(&grid);
+                P2D::R2::R2 alg(&grid, true);
                 for (int id : args.ids)
                     P2D::run(&alg, scens, id);
             }

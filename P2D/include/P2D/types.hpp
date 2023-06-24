@@ -1,5 +1,3 @@
-
-
 #include <math.h>
 #include <limits>
 #include <stdexcept>
@@ -24,6 +22,10 @@ namespace P2D
     using V2 = Vec2<int_t>;
     using V2l = Vec2<long_t>;
     using V2f = Vec2<float_t>;
+
+    // short hand for static casting enum classes to int
+    template <typename T>
+    inline int scast(const T &t) noexcept { return static_cast<int>(t); }
 
     // ============================ Side ===========================
     enum class Side

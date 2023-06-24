@@ -20,8 +20,8 @@ namespace P2D
             if (res.collided)
             {
                 out << "Collided: ";
-                out << "L(" << res.di_left << "|" << res.coord_left << ")";
-                out << ", R(" << res.di_right << "|" << res.coord_right << ")";
+                out << "L(" << scast(res.di_left) << "|" << res.coord_left << ")";
+                out << ", R(" << scast(res.di_right) << "|" << res.coord_right << ")";
             }
             else
                 out << "Not collided";
@@ -46,6 +46,7 @@ namespace P2D
             res.di_right = di_right;
             res.key_left = grid->coordToKey<false>(res.coord_left);
             res.key_right = grid->coordToKey<false>(res.coord_right);
+            res.collided = true;
             return res;
         }
 
@@ -63,7 +64,7 @@ namespace P2D
         inline LosResult searchCardinal(const V2 &src_coord, const V2 &tgt_coord, const V2 &dir) const
         {
             dir_idx_t di_front = dirToDirIdx(dir);
-            assert(isCardinal(di) == true);
+            assert(isCardinal(di_front) == true);
             const bool dim_l = (di_front == 0 || di_front == 4);
             const int_t &last_l = cast == true ? tgt_coord[dim_l] : grid->getBoundary<false>(di_front);
             V2 coord = cast == true ? src_coord : tgt_coord;
@@ -160,7 +161,7 @@ namespace P2D
                     assert(err_s == 0);
                     bool nl_in_map = grid->getBoundary<false>(addDirIdx(di_long, 4)) != src_coord[dim_l];
                     bool ns_in_map = grid->getBoundary<false>(addDirIdx(di_short, 4)) != src_coord[!dim_l];
-                    mapkey_t bcell_key = grid->addKeyToRelKey(cell_key, addDirIdx(di_front, 4));
+                    mapkey_t bcell_key = grid->addKeyToRelKey(cell_key, grid->getRelKey<true>(addDirIdx(di_front, 4)));
                     check_diag_block = nl_in_map && ns_in_map && isObstructed<invert>(bcell_key) == false; // diagonal block requires checkerboard corners
                 }
                 else
@@ -180,7 +181,7 @@ namespace P2D
         // returns the collided result
         template <bool invert>
         inline LosResult _ordinalObstructedFrontResult(const bool &is_rh_frame, const dir_idx_t &di_front, const V2 &abs_dir,
-                                                  const mapkey_t &cell_key, const mapkey_t &rel_nlcell_key, const mapkey_t &rel_nscell_key, const int_t &err_s) const
+                                                       const mapkey_t &cell_key, const mapkey_t &rel_nlcell_key, const mapkey_t &rel_nscell_key, const int_t &err_s) const
         {
             V2 vert_coord = grid->keyToCoord<true>(cell_key);
             vert_coord += grid->getVertexRelCoord(addDirIdx(di_front, 4));
@@ -220,7 +221,7 @@ namespace P2D
                     di_right = addDirIdx(di_front, is_rh_frame == true ? 5 : 7);
                 }
                 else
-                {     // nl_ob == false && ns_ob == false (ncv)
+                { // nl_ob == false && ns_ob == false (ncv)
                     if (abs_dir.x == abs_dir.y)
                     { // parallel to normal of corner
                         di_left = addDirIdx(di_front, 3);
@@ -259,22 +260,28 @@ namespace P2D
         inline LosResult searchOrdinal(const V2 &src_coord, const mapkey_t &src_key, const V2 &tgt_coord, const mapkey_t &tgt_key, const V2 &dir) const
         {
             dir_idx_t di_front = dirToDirIdx(dir);
-            assert(isOrdinal(di) == true);
-            const bool dim_l = (di_front == 0 || di_front == 4);
+            assert(isOrdinal(di_front) == true);
 
             const V2 sgn_dir = P2D::sgn(dir);
             const V2 abs_dir = P2D::abs(dir);
-            const bool is_rh_frame = (sgn_dir.x > 0 == sgn_dir.y > 0) == (abs_dir.x > abs_dir.y); // right hand frame (long axis lies right of short axis when superimposed on cartesian space)
+            const bool dim_l = abs_dir.x < abs_dir.y;
+
+            // note is_rh_frame has undefined behavior for 45 deg lines.
+            const bool is_rh_frame = ((sgn_dir.x > 0) == (sgn_dir.y > 0)) != (dim_l); // right hand frame (long axis lies right of short axis when superimposed on cartesian space)
             const dir_idx_t di_long = addDirIdx(di_front, is_rh_frame == true ? 7 : 1);
             const dir_idx_t di_short = addDirIdx(di_front, is_rh_frame == true ? 1 : 7);
 
             // -------- Determine last cell key ----------
-            mapkey_t cell_key = grid->addKeyToRelKey(src_key, grid->getCellRelKey(di_front, src_coord.x));
-            mapkey_t last_cell_key;
+            mapkey_t cell_key, last_cell_key;
             if constexpr (cast == true)
+            {
+                cell_key = grid->addKeyToRelKey(src_key, grid->getCellRelKey(di_front, src_coord.x));
                 last_cell_key = grid->addKeyToRelKey(tgt_key, grid->getCellRelKey(di_front, tgt_coord.x));
+            }
             else
             { // find where the last vert_key is, find the difference between the last vert_key and src_hey, and get the relative cell key using the difference
+                cell_key = grid->addKeyToRelKey(tgt_key, grid->getCellRelKey(di_front, tgt_coord.x));
+
                 // last_vert_key is dependent on the point the projection exits the map
                 // The difference between the long direction grid boundary and the src long coordinate, if the projection collides at the long direction's grid boundary
                 const int_t diff_long_long = grid->getBoundary<false>(di_long) - src_coord[dim_l];
@@ -305,9 +312,6 @@ namespace P2D
             const mapkey_t &rel_nscell_key = grid->getRelKey<true>(addDirIdx(di_short, 4));
             const mapkey_t &rel_lcell_key = grid->getRelKey<true>(di_long);
             const mapkey_t &rel_scell_key = grid->getRelKey<true>(di_short);
-            const mapkey_t &rel_lvert_key = grid->getRelKey<false>(di_long);
-            const mapkey_t &rel_svert_key = grid->getRelKey<false>(di_short);
-            bool nlcell_ob, nrcell_ob;
             int_t err_s = 0;
             const int_t &abs_dir_short = abs_dir[!dim_l];
             const int_t &abs_dir_long = abs_dir[dim_l];
@@ -338,7 +342,7 @@ namespace P2D
                         return getNotCollidedResult();
 
                     // ------------ check if collide with wall parallel to long axis ----------------------
-                    if (isObstructed<true>(cell_key) == true)
+                    if (isObstructed<invert>(cell_key) == true)
                     {
                         dir_idx_t di_left, di_right;
                         V2 coord_left, coord_right;

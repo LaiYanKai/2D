@@ -14,7 +14,7 @@ namespace P2D
     inline T sgn(T value) { return (T(0) < value) - (value < T(0)); }
 
     template <typename T = float_t, typename U>
-    T norm(U x1, U y1, U x2, U y2)
+    inline T norm(U x1, U y1, U x2, U y2)
     {
         U dx = x2 - x1;
         U dy = y2 - y1;

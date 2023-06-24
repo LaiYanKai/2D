@@ -71,7 +71,7 @@ namespace P2D
         // }
     };
 
-    void getScenarios(Scenarios &scens)
+    inline void getScenarios(Scenarios &scens)
     {
         assert(scens.fp_name != "");
         std::ifstream file(scens.fp_scen);
@@ -91,7 +91,7 @@ namespace P2D
         file.close();
     }
 
-    void getMap(Grid &grid, std::filesystem::path fp_map)
+    inline void getMap(Grid &grid, std::filesystem::path fp_map)
     {
         // read from Benchmark
         std::ifstream file(fp_map);
@@ -123,7 +123,7 @@ namespace P2D
         delete[] data;
     }
 
-    void writeResults(const Scenarios &scens)
+    inline void writeResults(const Scenarios &scens)
     {
         if (scens.scens.empty())
             std::cout << "writeResults: Nothing to write because there are no scenarios" << std::endl;
@@ -175,7 +175,7 @@ namespace P2D
 
     // 0 for all, 1 for first scen, 2 for 2nd scen etc.
     template <class T>
-    void run(T *const &alg, Scenarios &scens, int scen_num)
+    inline void run(T *const &alg, Scenarios &scens, int scen_num)
     {
         if (scen_num >= int(scens.scens.size()))
             throw std::runtime_error("run: scen_num (" + std::to_string(scen_num) + ") is >= number of scenarios (" + std::to_string(scens.scens.size()) + ")");

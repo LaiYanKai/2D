@@ -504,7 +504,7 @@ namespace P2D::R2
                 old_u_src->addTgt(nullptr);
 
             Corner *crn_cur = ray->collision->crn(side_mnr);
-            TraceStatus status_mnr(side_mnr, crn_cur, rays_left[side_mnr], rays_right[side_mnr]);
+            TraceStatus status_mnr(side_mnr, crn_cur, rays_left[scast(side_mnr)], rays_right[scast(side_mnr)]);
             status_mnr.initSrcWithProg(old_u_src, ray->vec);
             status_mnr.initTgtWithProg(u_tgt_mnr, -ray->vec);
 
@@ -518,7 +518,7 @@ namespace P2D::R2
             Unit *u_tgt_mjr = toTgt(old_u_tgt->type, TreeDir::Src, old_u_tgt, nullptr, nullptr, nullptr, old_u_tgt->cost_tgt);
 
             crn_cur = ray->collision->crn(side_mjr);
-            TraceStatus status_mjr(side_mjr, crn_cur, rays_left[side_mjr], rays_right[side_mjr]);
+            TraceStatus status_mjr(side_mjr, crn_cur, rays_left[scast(side_mjr)], rays_right[scast(side_mjr)]);
             status_mjr.initSrcWithProg(old_u_src, ray->vec);
             status_mjr.initTgtWithProg(u_tgt_mjr, -ray->vec);
 
@@ -553,7 +553,7 @@ namespace P2D::R2
                     _dbgdec; // 2
 
                     _dbg11("[C:Col] Begin Edge (" << side_mjr << ") Trace");
-                    TraceStatus status_edge(side_mjr, old_u_src->crn(), rays_left[side_mnr], rays_right[side_mnr]);
+                    TraceStatus status_edge(side_mjr, old_u_src->crn(), rays_left[scast(side_mnr)], rays_right[scast(side_mnr)]);
                     status_edge.initSrcWithProg(old_u_src, status_edge.v_cur);
                     status_edge.initTgtWithProg(u_tgt_edge, -status_edge.v_cur);
                     _tracerTrace(status_edge);
@@ -603,20 +603,21 @@ namespace P2D::R2
         _dbg11("[C] Path found: $ " << P2D::to_string(u_src->cost_src + u_tgt->cost_tgt + norm(u_src->coord(), u_tgt->coord())));
 
         Unit *u = u_tgt;
-        Path path_rev = {u->coord()};
+        Path path_rev;
         while (isGoal(u) == false)
         {
-            u = u->tgt();
-            path_rev.push_back(u->coord());
             assert(u->isTY());
             u->isValid();
+            path_rev.push_back(u->coord());
+            u = u->tgt();
         }
+        assert(u->coord() == crn_goal->coord);
 
         // copy reverse to path
         assert(path.empty());
-        _dbg10("\t" << path_rev.back());
-        path.push_back(path_rev.back());
-        for (auto it_coord = std::next(path_rev.rbegin()); it_coord != path_rev.rend(); ++it_coord)
+        path = {crn_goal->coord}; 
+        _dbg10("\t" << path.front());
+        for (auto it_coord = path_rev.rbegin(); it_coord != path_rev.rend(); ++it_coord)
         {
             path.push_back(*it_coord);
             _dbg00(";" << path.back());
@@ -624,16 +625,17 @@ namespace P2D::R2
 
         // copy to src
         u = u_src;
-        path.push_back(u->coord());
         while (isStart(u) == false)
         {
-            u = u->src();
             path.push_back(u->coord());
             _dbg00(";" << path.back());
             assert(u->isSY());
             u->isValid();
+            u = u->src();
         }
-        _dbg01("");
+        assert(u->coord() == crn_start->coord);
+        path.push_back(crn_start->coord);
+        _dbg01(";" << crn_start->coord);
     }
 
     bool R2::_casterConvTree(Unit *const u_from)
@@ -853,12 +855,14 @@ namespace P2D::R2
 
         Corner *crn_left, *crn_right;
         Corner c(false, res.key_left, 0, res.coord_left);
-        if (trace(c, Side::L, res.di_left) == false)
+        dir_idx_t di = res.di_left;
+        if (trace(c, Side::L, di) == false)
             crn_left = &null_crn;
         else
             crn_left = tryEmplaceCrn(c).first;
         c = Corner (false, res.key_right, 0, res.coord_right);
-        if (trace(c, Side::R, res.di_right) == false)
+        di = res.di_right;
+        if (trace(c, Side::R, di) == false)
             crn_right = &null_crn;
         else
             crn_right = tryEmplaceCrn(c).first;
@@ -920,7 +924,6 @@ namespace P2D::R2
             else
             {
                 _dbg11("[CastStart] VU Collided: {" << crn_src << ";" << crn_tgt << "} at " << res);
-                assert(res.state == LosState::collided);
                 ray->vis = Vis::No;
                 findCollisionCrns(ray, res);
                 return ray;
@@ -940,7 +943,6 @@ namespace P2D::R2
                 else
                 {
                     _dbg11("[Cast] VU Collided: {" << crn_src << ";" << crn_tgt << "} at " << res);
-                    assert(res.state == LosState::collided);
                     ray->vis = Vis::No;
                     findCollisionCrns(ray, res);
                 }

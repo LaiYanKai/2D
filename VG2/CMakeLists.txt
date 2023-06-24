@@ -13,6 +13,6 @@ set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DP2D_DEBUG -DVG2_DEBUG")
 # target_compile_features(VG2_exe PRIVATE cxx_std_17)
 # target_compile_options(VG2_exe PRIVATE -Wall -Wextra -Wpedantic) #linux only
 
-add_library(VG2_LIB INTERFACE)
-target_link_libraries(VG2_LIB INTERFACE P2D_LIB)
-target_include_directories(VG2_LIB INTERFACE include)
+add_library(VG2_LIB SHARED src/VG2.cpp)
+target_link_libraries(VG2_LIB PRIVATE P2D_LIB)
+target_include_directories(VG2_LIB PUBLIC include)

@@ -33,7 +33,8 @@ namespace P2D::R2
         return isLeftOrRight<false>(side_rel_of_cur, v_rel_edge_of_cur, v_curFromRel);
     }
 
-    bool R2::isCastable(const Side &side_traced, const V2 &v_curFromSrc, const V2 &v_curFromTgt, const V2 &v_traceCur)
+    // to remove v_curFromSrc
+    bool R2::isCastable(const Side &side_traced, [[maybe_unused]] const V2 &v_curFromSrc, const V2 &v_curFromTgt, const V2 &v_traceCur)
     {
         return // isOptTaut(side_traced, v_curFromSrc, v_curFromTgt) && // is actually (side_traced, v_curFromSrc, -v_curFromTgt)
             isCorrectSide(side_traced, v_curFromTgt, v_traceCur);

@@ -29,9 +29,7 @@ set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DP2D_DEBUG -DR2_DEBUG")
 # target_compile_features(R2_exe PRIVATE cxx_std_17)
 # target_compile_options(R2_exe PRIVATE -Wall -Wextra -Wpedantic) #linux only
 set (SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/src)
-add_library(R2_LIB INTERFACE)
-target_sources(R2_LIB INTERFACE
-    ${SRC_DIR}/node.cpp
+add_library(R2_LIB SHARED ${SRC_DIR}/node.cpp
     ${SRC_DIR}/corner.cpp
     ${SRC_DIR}/types.cpp
     ${SRC_DIR}/R2.cpp
@@ -41,7 +39,6 @@ target_sources(R2_LIB INTERFACE
     ${SRC_DIR}/checks.cpp
     ${SRC_DIR}/ray.cpp
     ${SRC_DIR}/unit.cpp
-    ${SRC_DIR}/traceinfo.cpp
-)
-target_link_libraries(R2_LIB INTERFACE P2D_LIB)
-target_include_directories(R2_LIB INTERFACE include)
+    ${SRC_DIR}/traceinfo.cpp)
+target_link_libraries(R2_LIB PRIVATE P2D_LIB)
+target_include_directories(R2_LIB PUBLIC include)

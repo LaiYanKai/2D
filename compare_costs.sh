@@ -9,7 +9,7 @@ chmod +x $FILE
 # ./$FILE "$@" 
 
 # ================ Store all the different results we want to compare ======================
-./$FILE --algs VG2B ANYA2B --name \
+./$FILE --algs VG2B R2E --name \
     results/dao/arena \
     results/dao/hrt201n \
     results/sc1/Aftershock \
@@ -33,4 +33,4 @@ chmod +x $FILE
     results/street/Shanghai_2_1024 \
     results/street/Shanghai_0_1024 \
     results/street/Sydney_1_1024 \
-    --print compare_results.log
+    --print compare_costs.log

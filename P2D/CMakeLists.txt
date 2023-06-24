@@ -7,8 +7,8 @@ project(P2D
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DP2D_DEBUG")
 
-add_library(P2D_LIB INTERFACE)
-target_include_directories(P2D_LIB INTERFACE include)
+add_library(P2D_LIB SHARED src/P2D.cpp)
+target_include_directories(P2D_LIB PUBLIC include)
 
 # add_executable(P2D_exe src/main.cpp) #test
 # target_include_directories(P2D_exe PRIVATE include)

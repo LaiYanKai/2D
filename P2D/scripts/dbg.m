@@ -2,15 +2,15 @@
 clear all; close all; clc
 
 algo = "VG2B";
-scen = 577;
+scen = 151;
 
 % map_pair = ["dao", "arena"];
-% map_pair = ["dao", "hrt201n"];
+map_pair = ["dao", "hrt201n"];
 % map_pair = ["sc1", "Aftershock"];
 % map_pair = ["sc1", "Aurora"];
 % map_pair = ["da2", "lt_0_lowtown_a3_n_c"];
-map_pair = ["room", "16room_000"];
-
+% map_pair = ["room", "16room_000"];
+    x
 % get paths
 script_path = matlab.desktop.editor.getActiveFilename;
 [script_dir, ~, ~] = fileparts(script_path);

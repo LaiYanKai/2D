@@ -5,12 +5,12 @@
 #pragma once
 namespace P2D
 {
-    bool inRange(const dir_idx_t &dir_idx) { return dir_idx >= 0 && dir_idx <= 7; }
-    bool isOrdinal(const dir_idx_t &dir_idx) { return (dir_idx & 1) == 1; }
-    bool isCardinal(const dir_idx_t &dir_idx) { return (dir_idx & 1) == 0; }
+    inline bool inRange(const dir_idx_t &dir_idx) { return dir_idx >= 0 && dir_idx <= 7; }
+    inline bool isOrdinal(const dir_idx_t &dir_idx) { return (dir_idx & 1) == 1; }
+    inline bool isCardinal(const dir_idx_t &dir_idx) { return (dir_idx & 1) == 0; }
 
     template <typename T>
-    dir_idx_t dirToDirIdx(const T &dir_x, const T &dir_y)
+    inline dir_idx_t dirToDirIdx(const T &dir_x, const T &dir_y)
     {
         assert(dir_x != 0 || dir_y != 0);
         if (dir_x > 0)
@@ -36,10 +36,10 @@ namespace P2D
         else
             return 8;
     }
-    dir_idx_t dirToDirIdx(const V2 &dir) { return dirToDirIdx(dir.x, dir.y); }
+    inline dir_idx_t dirToDirIdx(const V2 &dir) { return dirToDirIdx(dir.x, dir.y); }
 
     template <typename T>
-    void dirIdxToDir(const dir_idx_t &dir_idx, T &sgn_dir_x, T &sgn_dir_y)
+    inline void dirIdxToDir(const dir_idx_t &dir_idx, T &sgn_dir_x, T &sgn_dir_y)
     {
         assert(dir_idx >= 0 && dir_idx <= 7);
         switch (dir_idx)
@@ -80,13 +80,13 @@ namespace P2D
     }
 
     template <class T>
-    T dirIdxToDir(const dir_idx_t &dir_idx)
+    inline T dirIdxToDir(const dir_idx_t &dir_idx)
     {
         T sgn_dir;
         dirIdxToDir(dir_idx, sgn_dir[0], sgn_dir[1]);
         return sgn_dir;
     }
-    V2 dirIdxToDir(const dir_idx_t &dir_idx) { return dirIdxToDir<V2>(dir_idx); }
+    inline V2 dirIdxToDir(const dir_idx_t &dir_idx) { return dirIdxToDir<V2>(dir_idx); }
 
     template <bool inRange = true>
     inline dir_idx_t addDirIdx(const dir_idx_t &dir_idx1, const dir_idx_t &dir_idx2)

@@ -75,7 +75,7 @@ namespace P2D::R2
         // else if (window == 0b1010)
         // { // can be 1 or 5
         //     V2 v_gfs = goal_coord - start_coord;
-        //     V2 v_di = V2(-1, 1);                            // dirIdxToDir(3); 
+        //     V2 v_di = V2(-1, 1);                            // dirIdxToDir(3);
         //     if (isLeft<false>(v_gfs, v_di).second == true) // don't care the parallel case (ambiguous)
         //         di_start = 1;
         //     else
@@ -138,64 +138,51 @@ namespace P2D::R2
     }
 
     // returns true if in map, otherwise false
+    // assumes that trace does not occur parallel to and on a map boundary.
+    // assumes that trace begins at a corner, or on an edge and di_trace is pointing parallel to the edge
+    // stops when the trace goes out of map, or a 90 degree turn is required at a corner.
     bool R2::trace(Corner &crn, const Side &side_traced, dir_idx_t &di_trace)
     {
         // dir_idx needs to cardinal (0,2,4,6), and must be pointing parallel to the edge at vertex described by key and coord.
         // key and coord correspond to the same vertex.
 
         // _dbg10("Trace from (" << crn << ") in di(" << int(di_trace) << ")...");
-    
-        dir_idx_t di = addDirIdx(di_trace, side_traced == Side::L ? 7 : 1);
-        mapkey_t obs_cell_key = grid->addRelKeyToKey(crn.mkey, grid->getCellRelKey(di, crn.x));
+
+        assert(isCardinal(di_trace) == true);
+        dir_idx_t di = addDirIdx(di_trace, side_traced == Side::L ? 5 : 3);
+        mapkey_t obs_cell_key = grid->addKeyToRelKey(crn.mkey, grid->getCellRelKey(di, crn.coord.x));
         di = addDirIdx(di_trace, side_traced == Side::L ? 1 : 7);
-        mapkey_t free_cell_key = grid->addRelKeyToKey(crn.mkey, grid->getCellRelKey(di, crn.x));
+        mapkey_t free_cell_key = grid->addKeyToRelKey(crn.mkey, grid->getCellRelKey(di, crn.coord.x));
+        const int_t &last_step = grid->getBoundary<false>(di_trace);
+        const bool dim_l = di_trace == 2 || di_trace == 6;
+        int_t &step = crn.coord[dim_l];
+        const int_t step_inc = dirIdxToDir(di_trace)[dim_l];
+        const mapkey_t rel_cell_key = grid->getRelKey<true>(di_trace);
 
-        mapkey_t last_obs_key = grid->getKey()
-
-        dir_idx_t obs_dir_idx = addDirIdx<true>(di_trace, side_traced == Side::L ? 7 : 1);
-        dir_idx_t free_dir_idx = addDirIdx<true>(di_trace, side_traced == Side::L ? 1 : 7);
-        const mapkey_t &rcfv_obs_key = grid->getCellRelKey(obs_dir_idx, );
-        const mapkey_t &rcfv_free_key = grid->getAdjRelKeyCFV(free_dir_idx);
-        mapkey_t obs_cell_key = grid->addKeyToRelKey(crn.mkey, rcfv_obs_key);
-        mapkey_t free_cell_key = grid->addKeyToRelKey(crn.mkey, rcfv_free_key);
-        const mapkey_t &rel_f_key = grid->getAdjRelKey(di_trace);
-
-        int longer_dim = (di_trace & 2) == 2;      // 0 if 0 or 4, 1 if 2 or 6;
-        int_t longer_sgn = di_trace <= 2 ? 1 : -1; // 1 if 0 or 2, -1 if 4 or 6;
-        int_t &longer_val = crn.coord[longer_dim];
-        int_t steps_to_bound = longer_sgn < 0 ? longer_val : grid->getSize()[longer_dim] - longer_val; // number of vertices to edge of map. If 0, already at edge of map.
-
-        for (int step = 0; step < steps_to_bound; ++step)
-        // while (1)
+        for (; step != last_step; step += step_inc)
         {
-            // if constexpr (block)
-            { // block
-                if (grid->isOc(free_cell_key))
-                {                                                                           // at non convex corner  or blocked
-                    di_trace = addDirIdx<true>(di_trace, side_traced == Side::L ? 2 : 6);   // get next direction
-                    crn.di_occ = addDirIdx<true>(di_trace, side_traced == Side::L ? 5 : 3); // used only for begin, as begin can lie on ncv corner. Disabled, calculate in freesec checks
-                    // longer_val += step * longer_sgn;                                        // adjust coord
-                    crn.mkey = grid->coordToKey(crn.coord); // adjust key
-                    crn.is_convex = false;
-                    // crn.ckey = getCrnKey(crn.mkey, crn.di_occ);
-                    return true;
-                }
-                else if (!grid->isOc(obs_cell_key))
-                {                                                                           // at convex corner
-                    di_trace = addDirIdx<true>(di_trace, side_traced == Side::L ? 6 : 2);   // get next direction // redrived in algo
-                    crn.di_occ = addDirIdx<true>(di_trace, side_traced == Side::L ? 7 : 1); //
-                    // longer_val += step * longer_sgn;                                        // adjust coord
-                    crn.mkey = grid->coordToKey(crn.coord); // adjust key
-                    crn.is_convex = true;
-                    // crn.ckey = getCrnKey(crn.mkey, crn.di_occ);
-                    return true;
-                }
+            bool free_side_oc = grid->isOc(free_cell_key);
+            if (free_side_oc == true)
+            { // non convex reached
+                di_trace = addDirIdx(di_trace, side_traced == Side::L ? 2 : 6);
+                crn.di_occ = addDirIdx(di_trace, side_traced == Side::L ? 5 : 3);
+                crn.mkey = grid->coordToKey<false>(crn.coord);
+                crn.is_convex = false;
+                return true;
             }
 
-            // continue otherwise
-            free_cell_key = grid->addKeyToRelKey(free_cell_key, rel_f_key);
-            obs_cell_key = grid->addKeyToRelKey(obs_cell_key, rel_f_key);
-            longer_val += longer_sgn;
+            obs_cell_key = grid->addKeyToRelKey(obs_cell_key, rel_cell_key);
+            bool obs_side_oc = grid->isOc(obs_cell_key);
+            if (obs_side_oc == false)
+            { // convex corner
+                di_trace = addDirIdx(di_trace, side_traced == Side::L ? 6 : 2);
+                crn.di_occ = addDirIdx(di_trace, side_traced == Side::L ? 7 : 1);
+                crn.mkey = grid->coordToKey<false>(crn.coord);
+                crn.is_convex = true;
+                return true;
+            }
+
+            free_cell_key = grid->addKeyToRelKey(free_cell_key, rel_cell_key);
         }
         return false;
     }

@@ -152,9 +152,24 @@ namespace P2D
         // returns key of a vertex/coordinate from a current vertex/coord (key) from the relative key (rel_key)
         static inline mapkey_t addKeyToRelKey(const mapkey_t &key, const mapkey_t &rel_key) { return key + rel_key; }
 
-        // returns the key of a vertex/coordinate from a current vertex/coord (key) in the direction (dir_x, dir_y).
+        // returns the key of a vertex/cell from a current vertex/cell (key) in the direction (dir_x, dir_y).
         template <bool is_cell>
         inline mapkey_t getKey(const mapkey_t &key, const int_t &dir_x, const int_t &dir_y) const { return addKeyToRelKey(key, getRelKey<is_cell>(dir_x, dir_y)); }
+
+        // returns key of a vertex/cell from a current vertex/cell (key) in a cadrinal direction (di) and number of steps (num_steps).
+        template <bool is_cell>
+        inline mapkey_t getKey(const mapkey_t &key, const dir_idx_t &di, const int_t &num_steps) const
+        {
+            assert(isCardinal(di) == true);
+            if (di == 0)
+                return getKey<is_cell>(key, num_steps, 0);
+            else if (di == 2)
+                return getKey<is_cell>(key, 0, num_steps);
+            else if (di == 4)
+                return getKey<is_cell>(key, -num_steps, 0);
+            else
+                return getKey<is_cell>(key, 0, -num_steps);
+        }
 
         // returns relative cell key in dir_idx (1,3,5,7) depending on the vertex x position
         inline mapkey_t getCellRelKey(const dir_idx_t &dir_idx, const int_t &vert_x) const

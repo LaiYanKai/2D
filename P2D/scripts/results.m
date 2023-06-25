@@ -135,7 +135,7 @@ map_pairs = ["room", "32room_000";
     ];
 figure (1)
 set(gcf, 'Position',  [100, 100, 1115, 140*numel(map_pairs)]);
-tiledlayout(height(map_pairs), 7,'TileSpacing','Compact','Padding','None');
+TL = tiledlayout(height(map_pairs), 7,'TileSpacing','Compact','Padding','None');
 
 for m = 1:height(map_pairs)
     map_name = map_pairs(m, 2);
@@ -190,100 +190,45 @@ for m = 1:height(map_pairs)
     end
 end
 
-% exportgraphics(T,'results.pdf','BackgroundColor','none','ContentType','vector');
-%
-% A = [];
-% I = [3, 10, 20, 30];
-% for m = 1:height(map_pairs)
-%     t = alg_tables{m};
-%     a = [mean(t.RR2SE), mean(t.RR2S), mean(t.rsp)];
-%     unique_tp = unique(t.tp);
-%     su_rr2se = t.rsp ./ t.RR2SE;
-%     su_rr2s = t.rsp ./ t.RR2S;
-%     sutp_rr2se = zeros(numel(unique_tp), 1);
-%     sutp_rr2s = zeros(numel(unique_tp), 1);
-%     for i = 1:numel(unique_tp)
-%         idx = find(t.tp == unique_tp(i));
-%         sutp_rr2se(i) = mean(su_rr2se(idx));
-%         sutp_rr2s(i) = mean(su_rr2s(idx));
-%     end
-%     for i = I
-%         tmp = sutp_rr2se(unique_tp == i);
-%         if (isempty(tmp))
-%             a = [a, NaN, NaN];
-%         else
-%             a = [a, tmp];
-%             idx = find(t.tp == i);
-%             a = [a, mean(t.cost(idx))];
-%         end
-%     end
-%     A =[A; a];
-% end
-% fprintf("map & rr2se & rr2s & rsp & %i & cost & %i & cost & %i & cost \\\\\n\\hline\n", I(1), I(2), I(3));
-%
-% [~, I] = sortrows(A, 4);
-% A = A(I, :);
-% M = map_pairs(I, :);
-%
-% for m = 1:height(M)
-%     fprintf('%s', M(m, 2));
-%     for a = 1:width(A)
-%         fprintf(' & %.2f', A(m, a));
-%     end
-%     fprintf(" \\\\\n\\hline\n");
-% end
-%
-% function M = parse_maps(directory, name, flat)
-%
-% if nargin == 1
-%     fnames = dir(fullfile(directory, '/*.map'));
-%     fnames = {fnames.name};
-%     fnames = convertCharsToStrings(fnames);
-%     flat = true;
-% elseif nargin == 2
-%     fnames = convertCharsToStrings(name) + ".map";
-%     flat = true;
-% else
-%     fnames = convertCharsToStrings(name) + ".map";
-% end
-% M = [];
-% for f = 1:length(fnames)
-%     % extract mp data
-%     fname = fullfile(directory, fnames(f));
-%     if ~isfile(fname)
-%         fprintf("File %s does not exist.\n", fname);
-%         continue
-%     end
-%     fprintf("Opening %s\n", fname);
-%     fileID = fopen(fname,'r');
-%     ni = fscanf(fileID, "type octile\nheight %d\n");
-%     nj = fscanf(fileID, "width %d\nmap\n");
-%     % get mp
-%     mp_str = fscanf(fileID,"%1s",[nj, ni]);
-%     fclose(fileID);
-%
-%     % convert mp to numeric format
-%     mp_str = mp_str';
-%
-%
-%     mp = zeros(ni, nj);
-%     for i = 1:ni
-%         for j = 1:nj
-%             s = mp_str(i, j);
-%             if s ~= '.'
-%                 mp(i, j) = 1;
-%             end
-%         end
-%     end
-%
-%     if flat == true
-%         mp = reshape(mp', 1, []);
-%     end
-%
-%     % append to struct
-%     m = struct('num_i', ni, 'num_j', nj, ...
-%         'name', '', 'path', fname, 'mp', mp);
-%     [~, m.name, ~] = fileparts(fname);
-%     M = [M, m];
-% end
-% end
+exportgraphics(TL,'results.pdf','BackgroundColor','none','ContentType','vector');
+%% get results table
+A = [];
+I = [3, 10, 20, 30];
+for m = 1:height(map_pairs)
+    t = alg_tables{m};
+    a = [mean(t.RR2SE), mean(t.RR2S), mean(t.rsp)];
+    unique_tp = unique(t.tp);
+    su_rr2se = t.rsp ./ t.RR2SE;
+    su_rr2s = t.rsp ./ t.RR2S;
+    sutp_rr2se = zeros(numel(unique_tp), 1);
+    sutp_rr2s = zeros(numel(unique_tp), 1);
+    for i = 1:numel(unique_tp)
+        idx = find(t.tp == unique_tp(i));
+        sutp_rr2se(i) = mean(su_rr2se(idx));
+        sutp_rr2s(i) = mean(su_rr2s(idx));
+    end
+    for i = I
+        tmp = sutp_rr2se(unique_tp == i);
+        if (isempty(tmp))
+            a = [a, NaN, NaN];
+        else
+            a = [a, tmp];
+            idx = find(t.tp == i);
+            a = [a, mean(t.cost(idx))];
+        end
+    end
+    A =[A; a];
+end
+fprintf("map & rr2se & rr2s & rsp & %i & cost & %i & cost & %i & cost \\\\\n\\hline\n", I(1), I(2), I(3));
+
+[~, I] = sortrows(A, 4);
+A = A(I, :);
+M = map_pairs(I, :);
+
+for m = 1:height(M)
+    fprintf('%s', M(m, 2));
+    for a = 1:width(A)
+        fprintf(' & %.2f', A(m, a));
+    end
+    fprintf(" \\\\\n\\hline\n");
+end

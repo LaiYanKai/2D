@@ -9,15 +9,11 @@ FILE="build/Release/run/run_exe"
 # ./$FILE "$@" 
 
 # ================ Store all the different results we want to compare ======================
-./$FILE --algs ANYA R2E R2 --ids -1 --num_expts 10 --names \
+./$FILE --algs ANYA2B R2E R2 --ids -1 --num_expts 10 --names \
     dao/arena_scale2 \
     dao/hrt201n_scale2 \
-    sc1/Aftershock_scale2 \
-    sc1/Aurora_scale2 \
-    sc1/ArcticStation_scale2 \
     da2/ht_mansion2b_scale2 \
     da2/ht_0_hightown_scale2 \
-    da2/lt_0_lowtown_a3_n_c_scale2 \
     room/32room_000_scale2 \
     room/16room_000_scale2 \
     bg512/AR0709SR_scale2 \

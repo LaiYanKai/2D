@@ -1,3 +1,4 @@
+#!/bin/bash
 WS=$(cd $(dirname $0) && pwd)
 echo "Working from $WS"
 cd $WS
@@ -8,7 +9,7 @@ FILE="build/Release/run/run_exe"
 # ./$FILE "$@" 
 
 # ================ Store all the different results we want to compare ======================
-./$FILE --algs VG2B ANYA2B --ids -1 --name \
+./$FILE --algs R2E R2 --ids -1 --num_expts 10 --names \
     dao/arena \
     dao/hrt201n \
     sc1/Aftershock \
@@ -31,8 +32,7 @@ FILE="build/Release/run/run_exe"
     street/NewYork_0_1024 \
     street/Shanghai_2_1024 \
     street/Shanghai_0_1024 \
-    street/Sydney_1_1024
-
+    street/Sydney_1_1024    
 
 # if [ "$1" = "Debug" ] || [ "$1" = "Release" ]
 # then

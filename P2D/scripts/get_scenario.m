@@ -8,7 +8,7 @@ results_filename = name + "." + algo + ".results";
 results_path = fullfile(results_dir, results_filename);
 if ~isfile(results_path)
     fprintf("File %s does not exist.\n", results_path);
-    %     return
+    return
 end
 fid = fopen(results_path);
 for i = 1:scen

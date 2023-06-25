@@ -1,3 +1,4 @@
+#!/bin/bash
 WS=$(cd $(dirname $0) && pwd)
 echo "Working from $WS"
 cd $WS

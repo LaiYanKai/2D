@@ -14,15 +14,14 @@ struct Args
     std::filesystem::path results_dir = "results", map_dir = "data", scen_dir = "data";
     std::vector<std::filesystem::path> names, algs;
     std::vector<int> ids;
+    int num_expts = 1;
 };
 
 inline bool isOption(const std::string &test) { return test.size() > 2 && test.substr(0, 2) == "--"; }
 
 bool isValidOption(const std::string &option)
 {
-    return (option == "--results_dir" || option == "--map_dir" || option == "--scen_dir" || option == "--names" || option == "--algs" || option == "--ids");
-    // else
-    //     throw std::runtime_error("Invalid option: " + option);
+    return (option == "--num_expts" || option == "--results_dir" || option == "--map_dir" || option == "--scen_dir" || option == "--names" || option == "--algs" || option == "--ids");
 }
 void parseOption(Args &args, const std::string &option, int &arg_idx, const int &argc, char **&argv)
 {
@@ -46,7 +45,13 @@ void parseOption(Args &args, const std::string &option, int &arg_idx, const int 
         if (specified == true)
             std::cout << "[WARN]: " << option << " is specified more than once. The last value will be used." << std::endl;
 
-        if (option == "--results_dir")
+        if (option == "--num_expts")
+        {
+            args.num_expts = std::stoi(arg);
+            if (args.num_expts <= 0)
+                throw std::out_of_range("--num_expts must be at least 1");
+        }
+        else if (option == "--results_dir")
         {
             args.results_dir = arg;
             specified = true;
@@ -131,83 +136,88 @@ int main(int argc, char *argv[])
         fpaths.push_back({fp_map, fp_scen, name});
     }
 
-    for (const auto &fpath : fpaths)
+    for (int i = 0; i < args.num_expts; ++i)
     {
-        P2D::Grid grid;
-        P2D::getMap(grid, fpath[0]);
+        std::string suffix_expt_num = args.num_expts > 1 ? "." + std::to_string(i) : "";
 
-        for (const auto &alg : args.algs)
+        for (const auto &fpath : fpaths)
         {
-            P2D::Scenarios scens;
-            scens.fp_map = fpath[0];
-            scens.fp_scen = fpath[1];
-            scens.fp_name = fpath[2];
-            scens.fp_alg = alg;
-            scens.fp_results = args.results_dir / scens.fp_name;
-            scens.fp_results.replace_extension(alg.string() + ".results");
-            P2D::getScenarios(scens);
+            P2D::Grid grid;
+            P2D::getMap(grid, fpath[0]);
 
-            if (alg == "TS2B")
+            for (const auto &alg : args.algs)
             {
-                P2D::TS2::TS2<true> alg(&grid);
-                for (int id : args.ids)
-                    P2D::run(&alg, scens, id);
-            }
-            else if (alg == "TS2N")
-            {
-                P2D::TS2::TS2<false> alg(&grid);
-                for (int id : args.ids)
-                    P2D::run(&alg, scens, id);
-            }
-            else if (alg == "VG2B")
-            {
-                std::filesystem::path fp_vg = "VG2/combinations";
-                fp_vg = fp_vg / scens.fp_name;
-                fp_vg.replace_extension(".VG2B.combinations");
+                P2D::Scenarios scens;
+                scens.fp_map = fpath[0];
+                scens.fp_scen = fpath[1];
+                scens.fp_name = fpath[2];
+                scens.fp_alg = alg;
+                scens.fp_results = args.results_dir / scens.fp_name;
+                scens.fp_results.replace_extension(alg.string() + suffix_expt_num + ".results");
+                P2D::getScenarios(scens);
 
-                P2D::VG2::VG2<true> alg(&grid, fp_vg);
-                for (int id : args.ids)
-                    P2D::run(&alg, scens, id);
-            }
-            else if (alg == "VG2N")
-            {
-                std::filesystem::path fp_vg = "VG2/combinations";
-                fp_vg = fp_vg / scens.fp_name;
-                fp_vg.replace_extension(".VG2N.combinations");
+                if (alg == "TS2B")
+                {
+                    P2D::TS2::TS2<true> alg(&grid);
+                    for (int id : args.ids)
+                        P2D::run(&alg, scens, id);
+                }
+                else if (alg == "TS2N")
+                {
+                    P2D::TS2::TS2<false> alg(&grid);
+                    for (int id : args.ids)
+                        P2D::run(&alg, scens, id);
+                }
+                else if (alg == "VG2B")
+                {
+                    std::filesystem::path fp_vg = "VG2/combinations";
+                    fp_vg = fp_vg / scens.fp_name;
+                    fp_vg.replace_extension(".VG2B.combinations");
 
-                P2D::VG2::VG2<false> alg(&grid, fp_vg);
-                for (int id : args.ids)
-                    P2D::run(&alg, scens, id);
-            }
-            else if (alg == "ANYA2B")
-            {
-                P2D::ANYA2::ANYA2<true> alg(&grid);
-                for (int id : args.ids)
-                    P2D::run(&alg, scens, id);
-            }
-            else if (alg == "ANYA2N")
-            {
-                P2D::ANYA2::ANYA2<false> alg(&grid);
-                for (int id : args.ids)
-                    P2D::run(&alg, scens, id);
-            }
-            else if (alg == "R2")
-            {
-                P2D::R2::R2 alg(&grid, false);
-                for (int id : args.ids)
-                    P2D::run(&alg, scens, id);
-            }
-            else if (alg == "R2E")
-            {
-                P2D::R2::R2 alg(&grid, true);
-                for (int id : args.ids)
-                    P2D::run(&alg, scens, id);
-            }
-            else
-                throw std::out_of_range("Invalid algorithm: " + alg.string());
+                    P2D::VG2::VG2<true> alg(&grid, fp_vg);
+                    for (int id : args.ids)
+                        P2D::run(&alg, scens, id);
+                }
+                else if (alg == "VG2N")
+                {
+                    std::filesystem::path fp_vg = "VG2/combinations";
+                    fp_vg = fp_vg / scens.fp_name;
+                    fp_vg.replace_extension(".VG2N.combinations");
 
-            if (args.ids.front() == -1)
-                P2D::writeResults(scens);
+                    P2D::VG2::VG2<false> alg(&grid, fp_vg);
+                    for (int id : args.ids)
+                        P2D::run(&alg, scens, id);
+                }
+                else if (alg == "ANYA2B")
+                {
+                    P2D::ANYA2::ANYA2<true> alg(&grid);
+                    for (int id : args.ids)
+                        P2D::run(&alg, scens, id);
+                }
+                else if (alg == "ANYA2N")
+                {
+                    P2D::ANYA2::ANYA2<false> alg(&grid);
+                    for (int id : args.ids)
+                        P2D::run(&alg, scens, id);
+                }
+                else if (alg == "R2")
+                {
+                    P2D::R2::R2 alg(&grid, false);
+                    for (int id : args.ids)
+                        P2D::run(&alg, scens, id);
+                }
+                else if (alg == "R2E")
+                {
+                    P2D::R2::R2 alg(&grid, true);
+                    for (int id : args.ids)
+                        P2D::run(&alg, scens, id);
+                }
+                else
+                    throw std::out_of_range("Invalid algorithm: " + alg.string());
+
+                if (args.ids.front() == -1)
+                    P2D::writeResults(scens);
+            }
         }
     }
     return 0;

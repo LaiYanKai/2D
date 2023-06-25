@@ -1,3 +1,4 @@
+#!/bin/bash
 WS=`echo "$( cd "$( dirname "$0" )" && pwd )"`
 echo "Workspace is $WS"
 cd $WS

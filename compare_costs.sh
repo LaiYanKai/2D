@@ -9,7 +9,7 @@ chmod +x $FILE
 # ./$FILE "$@" 
 
 # ================ Store all the different results we want to compare ======================
-./$FILE --algs VG2B R2E --name \
+./$FILE --algs VG2B R2E R2 --name \
     results/dao/arena \
     results/dao/hrt201n \
     results/sc1/Aftershock \

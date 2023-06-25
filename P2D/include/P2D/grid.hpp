@@ -120,7 +120,7 @@ namespace P2D
         template <bool is_cell>
         inline mapkey_t getDiffKey(const V2 &diff) const { return getDiffKey<is_cell>(diff.x, diff.y); }
 
-        // returns key in dir_x and dir_y, direction.
+        // returns the adjacent key in dir_x and dir_y direction.
         template <bool is_cell>
         inline const mapkey_t &getRelKey(const int_t &dir_x, const int_t &dir_y) const
         {
@@ -154,7 +154,7 @@ namespace P2D
 
         // returns the key of a vertex/cell from a current vertex/cell (key) in the direction (dir_x, dir_y).
         template <bool is_cell>
-        inline mapkey_t getKey(const mapkey_t &key, const int_t &dir_x, const int_t &dir_y) const { return addKeyToRelKey(key, getRelKey<is_cell>(dir_x, dir_y)); }
+        inline mapkey_t getKey(const mapkey_t &key, const int_t &dir_x, const int_t &dir_y) const { return addKeyToRelKey(key, getDiffKey<is_cell>(dir_x, dir_y)); }
 
         // returns key of a vertex/cell from a current vertex/cell (key) in a cadrinal direction (di) and number of steps (num_steps).
         template <bool is_cell>

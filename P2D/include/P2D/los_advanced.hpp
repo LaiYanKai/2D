@@ -65,7 +65,7 @@ namespace P2D
         {
             dir_idx_t di_front = dirToDirIdx(dir);
             assert(isCardinal(di_front) == true);
-            const bool dim_l = (di_front == 0 || di_front == 4);
+            const bool dim_l = (di_front == 2 || di_front == 6);
             const int_t &last_l = cast == true ? tgt_coord[dim_l] : grid->getBoundary<false>(di_front);
             V2 coord = cast == true ? src_coord : tgt_coord;
             int_t &l = coord[dim_l];
@@ -95,11 +95,17 @@ namespace P2D
                     cell_coord = coord + grid->getCellRelCoord(addDirIdx(di_front, 5));
                     frcell_key = grid->coordToKey<true>(cell_coord); // is brcell_key atm
                     window |= (isObstructed<invert>(frcell_key) << 2);
+                    flcell_key = grid->addKeyToRelKey(flcell_key, rel_cell_key);
+                    frcell_key = grid->addKeyToRelKey(frcell_key, rel_cell_key);
                 }
                 else
+                {
                     window = 0b1100;
-                flcell_key = grid->addKeyToRelKey(flcell_key, rel_cell_key);
-                frcell_key = grid->addKeyToRelKey(frcell_key, rel_cell_key);
+                    V2 cell_coord = coord + grid->getCellRelCoord(addDirIdx(di_front, 1));
+                    flcell_key = grid->coordToKey<true>(cell_coord);
+                    cell_coord = coord + grid->getCellRelCoord(addDirIdx(di_front, 7));
+                    frcell_key = grid->coordToKey<true>(cell_coord);
+                }
             }
             else
             {
@@ -119,7 +125,7 @@ namespace P2D
                 // ------ Check if front is blocked ----------
                 bool front_blocked;
                 if constexpr (diag_block)
-                    front_blocked = window == 0b1001 || window == 0b1010 || (window & 0b11) == 0b11;
+                    front_blocked = window == 0b1001 || window == 0b0110 || (window & 0b11) == 0b11;
                 else
                     front_blocked = window == 0b11;
 
@@ -284,9 +290,9 @@ namespace P2D
 
                 // last_vert_key is dependent on the point the projection exits the map
                 // The difference between the long direction grid boundary and the src long coordinate, if the projection collides at the long direction's grid boundary
-                const int_t diff_long_long = grid->getBoundary<false>(di_long) - src_coord[dim_l];
+                const int_t diff_long_long = grid->getBoundary<false>(di_long) - tgt_coord[dim_l];
                 // The difference between the short direction grid boundary and the src short coordinate, if the projection collides at the short direction's grid boundary
-                const int_t diff_short_short = grid->getBoundary<false>(di_short) - src_coord[!dim_l];
+                const int_t diff_short_short = grid->getBoundary<false>(di_short) - tgt_coord[!dim_l];
                 // The floored difference between the short direction grid boundary and the src long coordinate, if the projection collides at the short direction's grid boundary
                 const int_t diff_long_short = diff_short_short * dir[dim_l] / dir[!dim_l];
 

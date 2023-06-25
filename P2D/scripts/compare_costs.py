@@ -135,6 +135,7 @@ def main():
 
         # ==================== BUILD OTHER FILES ======================
         other_files = []
+        num_files_compared = 0
         for other_filepath in other_filepaths:
             print(f"Reading Other File: '{other_filepath}'")
             if other_filepath.is_dir():
@@ -154,6 +155,7 @@ def main():
                         f"'{other_filepath}' has {num_scens} scenarios but oracle_file has {len(oracle_scens)}. Skip '{other_filepath}'"
                     )
                 else:
+                    num_files_compared += 1
                     scens = []
                     for i in range(num_scens):
                         scen = Scenario()
@@ -180,6 +182,8 @@ def main():
             i += 1
         if has_differences:
             print(f"[WARN] Some scenario(s) have different path lengths")
+        elif num_files_compared != len(other_filepaths):
+            print(f"[WARN] Not all files were compared")
         else:
             print(f"[ OK ] All scenarios have the same path length")
         print(f"--- Comparison with Oracle {oracle_filepath} done.")

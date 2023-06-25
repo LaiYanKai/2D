@@ -1,34 +1,35 @@
 %% Import and collate results, and save them
 clear all; clc; close all
 
-algs = ["R2E", "R2"]; % make sure the first alg returns the optimal path, and the optimal path does not contain more than 3 consecutive colinear points anywhere
-expt_nums = [0:9];
+algs = ["R2E", "R2", "ANYA2B"]; % make sure the first alg returns the optimal path, and the optimal path does not contain more than 3 consecutive colinear points anywhere
+expt_nums = 0:9;
 map_pairs = [
-    "dao", "arena";
-    "bg512", "AR0709SR";
-    "bg512", "AR0504SR";
-    "bg512", "AR0014SR";
-    "bg512", "AR0304SR";
-    "bg512", "AR0702SR";
-    "bg512", "AR0205SR";
-    "bg512", "AR0602SR";
-    "bg512", "AR0603SR";
-    "street", "Denver_2_1024";
-    "street", "NewYork_0_1024";
-    "street", "Shanghai_2_1024";
-    "street", "Shanghai_0_1024";
-    "street", "Sydney_1_1024";
-    "da2", "ht_mansion2b";
-    "da2", "ht_0_hightown";
-    "dao", "hrt201n";
-    "room", "32room_000";
-    "room", "16room_000";
+    "dao", "arena_scale2";
+    "bg512", "AR0709SR_scale2";
+    "bg512", "AR0504SR_scale2";
+    "bg512", "AR0014SR_scale2";
+    "bg512", "AR0304SR_scale2";
+    "bg512", "AR0702SR_scale2";
+    "bg512", "AR0205SR_scale2";
+    "bg512", "AR0602SR_scale2";
+    "bg512", "AR0603SR_scale2";
+    "street", "Denver_2_1024_scale2";
+    "street", "NewYork_0_1024_scale2";
+    "street", "Shanghai_2_1024_scale2";
+    "street", "Shanghai_0_1024_scale2";
+    "street", "Sydney_1_1024_scale2";
+    "da2", "ht_mansion2b_scale2";
+    "da2", "ht_0_hightown_scale2";
+    "dao", "hrt201n_scale2";
+    "room", "32room_000_scale2";
+    "room", "16room_000_scale2";
     ];
 
 
 script_path = matlab.desktop.editor.getActiveFilename;
 [script_dir, ~, ~] = fileparts(script_path);
 addpath(script_dir);
+cd(fullfile(script_dir, "..", ".."))
 
 T_points = cell(height(map_pairs), 1);
 T_costs = cell(height(map_pairs), 1);
@@ -39,7 +40,7 @@ for m = 1:height(map_pairs)
     specified = false;
     for a = 1:numel(algs)
         algo = algs(a);
-        % calculate average run times across all expts for each scen, 
+        % calculate average run times across all expts for each scen,
         % and specify the optimal path num turning points and costs
         % assuming all paths found are identical across expts
         avg_nsecs = [];
@@ -58,11 +59,26 @@ for m = 1:height(map_pairs)
 end
 map_pairs = map_pairs(:, 1) + "/" + map_pairs(:, 2);
 T_nsecs = cell2table(T_nsecs, "RowNames", map_pairs, "VariableNames", algs);
-T_costs = cell2table(T_costs, "RowNames", map_pairs, "VariableNames", ["costs"]);
-T_points = cell2table(T_points, "RowNames", map_pairs, "VariableNames", ["points"]);
-
+T_costs = cell2table(T_costs, "RowNames", map_pairs, "VariableNames", "costs");
+T_points = cell2table(T_points, "RowNames", map_pairs, "VariableNames", "points");
 save(fullfile(script_dir, "results.mat"), "T_nsecs", "T_costs", "T_points");
-%% 
+
+%% import RSP files
+RSP_nsecs = cell(height(map_pairs), 1);
+for m = 1:height(map_pairs)
+
+    avg_nsecs = [];
+    for i = (expt_nums + 1)
+        t = readtable(fullfile("results", map_pairs(m) + "_" + num2str(i) + ".txt"));
+        avg_nsecs = [avg_nsecs, t.searchNs];
+    end
+    RSP_nsecs{m} = mean(avg_nsecs, 2);
+    disp("Tabulated Rsp " + map_pairs(m));
+end
+
+T_nsecs.("RSP") = RSP_nsecs;
+save(fullfile(script_dir, "results.mat"), "T_nsecs", "T_costs", "T_points");
+%% Get average runtimes and speedups per points
 clear all; clc; close all
 
 script_path = matlab.desktop.editor.getActiveFilename;
@@ -77,268 +93,103 @@ map_pairs = T_nsecs.Properties.RowNames;
 T = T_nsecs;
 SU = cell(height(T), 4);
 for m = 1:height(T)
-    % gather points with same number of speed ups
-    points = T_points{m, 1};
-    points = points{:};
-    max_points = max(points);
-    SU_R2E_ANYA = zeros(max_points, 1);
-    SU_R2_ANYA = zeros(max_points, 1);
-    SU_R2E_RSP = zeros(max_points, 1);
-    SU_R2_RSP = zeros(max_points, 1);
-    for p = 2:max_points
-        idx = points == p;
+    % gather averrage speed ups for paths with same number of turn. pts.
+    points = T_points.points{m};
+    unique_points = unique(points);
+    SU_R2E_ANYA = zeros(numel(unique_points), 1);
+    SU_R2_ANYA = zeros(numel(unique_points), 1);
+    SU_R2E_RSP = zeros(numel(unique_points), 1);
+    SU_R2_RSP = zeros(numel(unique_points), 1);
+    for i = 1:numel(unique_points)
+        idx = (points == unique_points(i));
         nsecs_R2 = T_nsecs.R2{m};
         nsecs_R2E = T_nsecs.R2E{m};
-        SU_R2E_ANYA(p) = mean(nsecs_R2(idx) ./ nsecs_R2E(idx));
+        nsecs_ANYA = T_nsecs.ANYA2B{m};
+        nsecs_RSP = T_nsecs.RSP{m};
+        SU_R2E_ANYA(i) = mean(nsecs_ANYA(idx) ./ nsecs_R2E(idx));
+        SU_R2_ANYA(i) = mean(nsecs_ANYA(idx) ./ nsecs_R2(idx));
+        SU_R2E_RSP(i) = mean(nsecs_RSP(idx) ./ nsecs_R2E(idx));
+        SU_R2_RSP(i) = mean(nsecs_RSP(idx) ./ nsecs_R2(idx));
     end
-    SU{m, 1} = SU_R2E_ANYA;
-    SU{m, 2} = SU_R2_ANYA;
-    SU{m, 3} = SU_R2E_RSP;
-    SU{m, 4} = SU_R2_RSP;
-        
+    SU{m, 1} = unique_points;
+    SU{m, 2} = SU_R2E_ANYA;
+    SU{m, 3} = SU_R2_ANYA;
+    SU{m, 4} = SU_R2E_RSP;
+    SU{m, 5} = SU_R2_RSP;
+
     % collect average runtimes for each algo
     for a = 1:width(T)
         data = T{m ,a};
         T{m, a} = {mean(data{:})};
     end
 end
+SU = cell2table(SU, "RowNames", T_nsecs.Properties.RowNames, ...
+    "VariableNames", ["unique_points", "R2E_ANYA", "R2_ANYA", "R2E_RSP", "R2_RSP"]);
+save(fullfile(script_dir, "results.mat"), "T", "T_nsecs", "T_costs", "T_points", "SU");
+%% plot
+map_pairs = ["room", "32room_000";
+    "da2", "ht_mansion2b";
+    "bg512", "AR0014SR";
+    "street", "NewYork_0_1024";
+    "street", "Shanghai_2_1024"
+    ];
+figure (1)
+set(gcf, 'Position',  [100, 100, 1115, 140*numel(map_pairs)]);
+tiledlayout(height(map_pairs), 7,'TileSpacing','Compact','Padding','None');
+
+for m = 1:height(map_pairs)
+    map_name = map_pairs(m, 2);
+    nexttile
+    [M, C] = parse_maps(fullfile("data", map_pairs(m, 1)), map_name, false);
+    ih = imagesc(C, "XData", 0.5, "YData", 0.5);
+    ylabel(map_name, 'Interpreter','none')
+    h1 = text(-0.1*M.num_i, M.num_j/2, map_name, 'Interpreter', 'none', 'HorizontalAlignment', 'center');
+    set(h1, 'rotation', 90)
+    grid off
+    axis off
+    rectangle('Position',[0 0 M.num_i M.num_j], 'Edgecolor', 'r')
+    axis equal
+    colormap('gray')
 
 
+    nexttile([1, 3])
+    row_name = map_pairs(m, 1) + "/" + map_pairs(m, 2);
+    SU_R2E_RSP = SU{row_name, "R2E_RSP"};
+    SU_R2_RSP = SU{row_name, "R2_RSP"};
+    SU_R2E_ANYA = SU{row_name, "R2E_ANYA"};
+    SU_R2_ANYA= SU{row_name, "R2_ANYA"};
+    unique_points = SU{row_name, "unique_points"};
+    unique_points = unique_points{:};
 
+    plot(unique_points, SU_R2E_RSP{:}, 'x-');
+    hold on
+    plot(unique_points, SU_R2_RSP{:}, 's-');
+    plot(unique_points, SU_R2E_ANYA{:}, '.-');
+    plot(unique_points, SU_R2_ANYA{:}, 'o-');
+    yline(1, '--');
+    legend(["R2E vs RayScan+", "R2 vs RayScan+", "R2E vs ANYA", "R2 vs ANYA"], 'Location', 'north' );
+    ylim([0, inf])
+    grid on
+    if m == 1
+        title("Mean Speed Ups")
+    elseif m == height(map_pairs)
+        xlabel("Turning Points");
+    end
+    hold off
 
+    nexttile([1, 3])
+    points = T_points{row_name, "points"};
+    costs = T_costs{row_name, "costs"};
+    plot(points{:}, costs{:}, '.');
+    grid on
+    hold off
+    if m == 1
+        title("Path Cost (Num. Cells)")
+    elseif m == height(map_pairs)
+        xlabel("Turning Points");
+    end
+end
 
-% %% read .txt files from rsp
-% clear all; close all; clc
-% addpath(fileparts(which(mfilename)))
-%
-% rsp_tables = cell(height(map_pairs), 1);
-% num_runs = 10;
-% for m = 1:height(map_pairs)
-%     map_name = map_pairs(m, 2);
-%     map_dir = map_pairs(m, 1);
-%
-%     T = table();
-%     for i = 1:num_runs
-%         t = readtable(fullfile("results", map_dir, ...
-%             map_name + "_" + num2str(i) + ".txt"));
-%         T.("run" + num2str(i)) = t.searchNs / 1000; % conv times to us
-%     end
-%     tmp = table2array(T);
-%     T.meanus = mean(tmp, 2);
-%     T.id = t.vID + 1; % +1 for rsp
-%     T.map = repmat(map_name, [height(T), 1]);
-%     T.alg = repmat("rsp", [height(T), 1]);
-%     T = sortrows(T, "id");
-%     rsp_tables{m} = T;
-%
-%     disp("Tabulated Rsp " + map_name);
-%
-%
-% end
-% %% read logs from .show_results
-% % convert to tab delimited
-% % header: id	alg	map	run	si	sj	ti	tj	cost	tp	us
-% t = readtable("results_rr2_.log");
-% algs = ["RR2SE", "RR2S", "RR2E", "RR2"];
-%
-% rr2_tables = cell(height(map_pairs), numel(algs));
-% for a = 1:numel(algs)
-%     tmp = t(t.alg == algs(a), :); % filter by algo;
-%     for m = 1:height(map_pairs)
-%         map_name = map_pairs(m, 2);
-%         tmp2 = tmp(tmp.map == map_name, :); % filter by map
-%         T = table();
-%         for i = 1:num_runs
-%             tmp3 = tmp2(tmp2.run == i, :); % filter by run
-%             T.("run" + num2str(i)) = tmp3.us;
-%         end
-%         tmp2 = table2array(T);
-%         T.meanus = mean(tmp2, 2);
-%         T.id = tmp3.id;
-%         T.map = repmat(map_name, [height(T), 1]);
-%         T.alg = repmat(algs(a), [height(T), 1]);
-%         T.cost = tmp3.cost; % copy cost once.
-%         T.tp = tmp3.tp; % copy tp once.
-%         T = sortrows(T, "id");
-%         rr2_tables{m, a} = T;
-%         disp("Tabulated " + algs(a) + " " + map_name);
-%     end
-% end
-% %% combine all tables with average speed
-% alg_tables = cell(height(map_pairs), 1);
-%
-% for m = 1:height(map_pairs)
-%     T = table();
-%     map_name = map_pairs(m, 2);
-%
-%     % find map in rsp and fill T
-%     for i = 1:height(rsp_tables)
-%         tmp = rsp_tables{i};
-%         if strcmp(tmp{1, "map"}, map_name)
-%             T.rsp = tmp.meanus;
-%             T.id = tmp.id;
-%             T.map = tmp.map;
-%             break
-%         end
-%     end
-%
-%     for a = 1:width(rr2_tables)
-%         for i = 1:height(rr2_tables)
-%             tmp = rr2_tables{i, a};
-%             if strcmp(tmp{1, "map"}, map_name)
-%                 if (~isequal(tmp.id, T.id) || ~isequal(tmp.map, T.map))
-%                     disp("tables not equal");
-%                 end
-%                 T.(tmp{1, "alg"}) = tmp.meanus;
-%                 if (a == 1) % copy info once
-%                     T.tp = tmp.tp;
-%                     T.cost = tmp.cost;
-%                 end
-%                 break
-%             end
-%         end
-%     end
-%
-%     alg_tables{m} = T;
-% end
-% %% plot
-% m = 18;  %2(AR0205SR) %5(AR0602SR)  %6(AR0603SR) %10 (Denver 2) %11(NewYork)
-% % 19 16room % 18 32room % 16 ht_0_hightown  %12(Shanghai_2_1024)
-% %18 (32room), 15(ht_mansion2b) 11(NewYork) 4(AR0014SR) 5(AR0304SR)
-% maps = [18, 15, 4, 11, 12];
-% figure (1)
-% set(gcf, 'Position',  [100, 100, 1115, 140*numel(maps)]);
-% T = tiledlayout(numel(maps), 7,'TileSpacing','Compact','Padding','None');
-%
-% mm = 0;
-% for m = maps
-%     mm = mm + 1;
-%     map_name = map_pairs(m, 2);
-%     map_dir = map_pairs(m, 1);
-%     disp(map_name);
-%     t = alg_tables{m};
-%
-%
-%     fprintf('avg us rr2se: %f\n', mean(t.RR2SE));
-%     fprintf('avg us rr2s: %f\n', mean(t.RR2S));
-%     fprintf('avg us rr2e: %f\n', mean(t.RR2E));
-%     fprintf('avg us rr2: %f\n', mean(t.RR2));
-%     fprintf('avg us rsp: %f\n', mean(t.rsp));
-%
-%     costs = t.cost;
-%     tp = t.tp;
-%     su_rr2se = t.rsp ./ t.RR2SE;
-%     su_rr2s = t.rsp ./ t.RR2S;
-%     su_rr2e = t.rsp ./ t.RR2E;
-%     su_rr2 = t.rsp ./ t.RR2;
-%
-%     [~, idx] = sort(costs);
-% %     n = 100;
-% %     buckets = ceil(numel(costs)/n);
-% %     avg_costs = zeros(buckets, 1);
-% %     avg_su_rr2se = zeros(buckets, 1);
-% %     avg_su_rr2s = zeros(buckets, 1);
-% %     avg_su_rr2e = zeros(buckets, 1);
-% %     avg_su_rr2 = zeros(buckets, 1);
-% %     for b = 1:buckets
-% %         idx2 = idx(((b-1)*n+1):min(b*n, numel(costs)));
-% %         avg_costs(b) = mean(costs(idx2));
-% %         avg_su_rr2se(b) = mean(su_rr2se(idx2));
-% %         avg_su_rr2s(b) = mean(su_rr2s(idx2));
-% %         avg_su_rr2e(b) = mean(su_rr2e(idx2));
-% %         avg_su_rr2(b) = mean(su_rr2(idx2));
-% %     end
-%
-%     % figure (1)
-%     % % semilogy(costs, su_rr2es, '.');
-%     % % semilogy(costs, su_rr2s, '.');
-%     % % semilogy(costs, su_rr2e, '.');
-%     % % semilogy(costs, su_rr2, '.');
-%     % semilogy(avg_costs, avg_su_rr2se, 's-');
-%     % hold on
-%     % semilogy(avg_costs, avg_su_rr2s, 's--');
-%     % % semilogy(avg_costs, avg_su_rr2e, 'x-');
-%     % % semilogy(avg_costs, avg_su_rr2, 'x--');
-%     % % legend(["rr2se", "rr2s", "rr2e", "rr2", 'rr2es avg', 'rr2s avg', 'rr2e avg', 'rr2 avg']);
-%     % legend(["RR2E", "RR2"]);
-%     % yline(1, 'k-.');
-%     % grid on
-%     % hold off
-%
-%     % calc average speedup per tp
-%     unique_tp = unique(tp);
-%     sutp_rr2se = zeros(numel(unique_tp), 1);
-%     sutp_rr2s = zeros(numel(unique_tp), 1);
-%     sutp_rr2e = zeros(numel(unique_tp), 1);
-%     sutp_rr2 = zeros(numel(unique_tp), 1);
-%     for i = 1:numel(unique_tp)
-%         idx = find(tp == unique_tp(i));
-%         sutp_rr2se(i) = mean(su_rr2se(idx));
-%         sutp_rr2s(i) = mean(su_rr2s(idx));
-%         sutp_rr2e(i) = mean(su_rr2e(idx));
-%         sutp_rr2(i) = mean(su_rr2(idx));
-%     end
-%
-%     % semilogy(tp, su_rr2es, 'o');
-%     % hold on
-%     % semilogy(tp, su_rr2s, 'x');
-%     % % semilogy(tp, su_rr2e, '.');
-%     % % semilogy(tp, su_rr2, '.');
-%     %
-%     % semilogy(unique_tp, sutp_rr2es, '.-');
-%     % semilogy(unique_tp, sutp_rr2s, '.--');
-%     % % semilogy(unique_tp, sutp_rr2e, 'x-');
-%     % % semilogy(unique_tp, sutp_rr2, 'x--');
-%     %
-%     % yline(1, 'k-.')
-%     % % legend(["rr2es", "rr2s", "rr2e", "rr2", 'rr2es avg', 'rr2s avg', 'rr2e avg', 'rr2 avg']);
-%     % legend(["rr2es", "rr2s", "rr2es avg", "rr2s avg"]);
-%     % grid on
-%     % hold off
-%
-%
-%     nexttile
-%     M = parse_maps(fullfile("data", map_dir), map_name);
-%     C = ~logical(reshape(M.mp, M.num_j, M.num_i));
-%     C = double(C);
-%     ih = imagesc(C, "XData", 0.5, "YData", 0.5);
-% %     ylabel(map_name, 'Interpreter','none')
-%     h1 = text(-0.1*M.num_i, M.num_j/2, map_name, 'Interpreter', 'none', 'HorizontalAlignment', 'center');
-%     set(h1, 'rotation', 90)
-%     grid off
-%     axis off
-%     rectangle('Position',[0 0 M.num_i M.num_j], 'Edgecolor', 'r')
-%     axis equal
-%     colormap('gray')
-%
-%
-%     nexttile([1, 3])
-%     plot(unique_tp, sutp_rr2se, '.-');
-%     hold on
-%     plot(unique_tp, sutp_rr2s, '.--');
-%     yline(1, '--');
-%     legend(["RR2E", "RR2"], 'Location', 'north' );
-%     ylim([0, inf])
-%     grid on
-%     if mm == 1
-%         title("Mean Speed Ups")
-%     elseif mm == numel(maps)
-%         xlabel("Turning Points");
-%     end
-%
-%     hold off
-%
-%     nexttile([1, 3])
-%     plot(tp, costs, '.');
-%     grid on
-%     hold off
-%     if mm == 1
-%         title("Path Cost (Num. Cells)")
-%     elseif mm == numel(maps)
-%         xlabel("Turning Points");
-%     end
-% end
-%
 % exportgraphics(T,'results.pdf','BackgroundColor','none','ContentType','vector');
 %
 % A = [];

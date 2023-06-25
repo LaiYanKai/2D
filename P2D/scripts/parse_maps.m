@@ -1,6 +1,7 @@
 
-function M = parse_maps(directory, name)
+function [M, C] = parse_maps(directory, name, display)
 M = [];
+C = [];
 % extract mp data
 fname = fullfile(directory, name + ".map");
 if ~isfile(fname)
@@ -34,6 +35,10 @@ M = struct('num_i', ni, 'num_j', nj, 'name', '', 'path', fname, 'mp', mp);
 
 C = ~logical(reshape(M.mp, M.num_j, M.num_i));
 C = double(C);
+
+if ~display
+    return
+end
 imagesc(C, "XData", 0.5, "YData", 0.5);
 set(gca,'YDir','normal')
 hold on

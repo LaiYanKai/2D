@@ -1,25 +1,26 @@
 % Scale Map twice, and convert pfarc into scen
 clear all
 map_pairs = [
-    "dao", "arena";
-    "bg512", "AR0709SR";
-    "bg512", "AR0504SR";
-    "bg512", "AR0014SR";
-    "bg512", "AR0304SR";
-    "bg512", "AR0702SR";
-    "bg512", "AR0205SR";
-    "bg512", "AR0602SR";
-    "bg512", "AR0603SR";
-    "street", "Denver_2_1024";
-    "street", "NewYork_0_1024";
-    "street", "Shanghai_2_1024";
-    "street", "Shanghai_0_1024";
-    "street", "Sydney_1_1024";
-    "da2", "ht_mansion2b";
-    "da2", "ht_0_hightown";
-    "dao", "hrt201n";
-    "room", "32room_000";
-    "room", "16room_000";
+    "random", "random512-10-1"
+%     "dao", "arena";
+%     "bg512", "AR0709SR";
+%     "bg512", "AR0504SR";
+%     "bg512", "AR0014SR";
+%     "bg512", "AR0304SR";
+%     "bg512", "AR0702SR";
+%     "bg512", "AR0205SR";
+%     "bg512", "AR0602SR";
+%     "bg512", "AR0603SR";
+%     "street", "Denver_2_1024";
+%     "street", "NewYork_0_1024";
+%     "street", "Shanghai_2_1024";
+%     "street", "Shanghai_0_1024";
+%     "street", "Sydney_1_1024";
+%     "da2", "ht_mansion2b";
+%     "da2", "ht_0_hightown";
+%     "dao", "hrt201n";
+%     "room", "32room_000";
+%     "room", "16room_000";
     ];
 sc = 2;
 

@@ -10,28 +10,29 @@ chmod +x $FILE
 # ./$FILE "$@" 
 
 # ================ Store all the different results we want to compare ======================
-./$FILE --algs VG2B R2E R2 --name \
-    results/dao/arena \
-    results/dao/hrt201n \
-    results/sc1/Aftershock \
-    results/sc1/Aurora \
-    results/sc1/ArcticStation \
-    results/da2/ht_mansion2b \
-    results/da2/ht_0_hightown \
-    results/da2/lt_0_lowtown_a3_n_c \
-    results/room/32room_000 \
-    results/room/16room_000 \
-    results/bg512/AR0709SR \
-    results/bg512/AR0504SR \
-    results/bg512/AR0014SR \
-    results/bg512/AR0304SR \
-    results/bg512/AR0702SR \
-    results/bg512/AR0205SR \
-    results/bg512/AR0602SR \
-    results/bg512/AR0603SR \
-    results/street/Denver_2_1024 \
-    results/street/NewYork_0_1024 \
-    results/street/Shanghai_2_1024 \
-    results/street/Shanghai_0_1024 \
-    results/street/Sydney_1_1024 \
+./$FILE --algs VG2B R2E.0 R2.0 ANYA2B.0 --name \
+    results/random/random512-10-1_scale2 \
+    # results/dao/arena \
+    # results/dao/hrt201n \
+    # results/sc1/Aftershock \
+    # results/sc1/Aurora \
+    # results/sc1/ArcticStation \
+    # results/da2/ht_mansion2b \
+    # results/da2/ht_0_hightown \
+    # results/da2/lt_0_lowtown_a3_n_c \
+    # results/room/32room_000 \
+    # results/room/16room_000 \
+    # results/bg512/AR0709SR \
+    # results/bg512/AR0504SR \
+    # results/bg512/AR0014SR \
+    # results/bg512/AR0304SR \
+    # results/bg512/AR0702SR \
+    # results/bg512/AR0205SR \
+    # results/bg512/AR0602SR \
+    # results/bg512/AR0603SR \
+    # results/street/Denver_2_1024 \
+    # results/street/NewYork_0_1024 \
+    # results/street/Shanghai_2_1024 \
+    # results/street/Shanghai_0_1024 \
+    # results/street/Sydney_1_1024 \
     --print compare_costs.log

@@ -1,7 +1,7 @@
 %% Import and collate results, and save them
 clear all; clc; close all
 
-algs = ["R2E", "R2", "ANYA2B"]; % make sure the first alg returns the optimal path, and the optimal path does not contain more than 3 consecutive colinear points anywhere
+algs = ["R2E", "R2", "ANYA"]; % make sure the first alg returns the optimal path, and the optimal path does not contain more than 3 consecutive colinear points anywhere
 expt_nums = 0:9;
 map_pairs = [
     "dao", "arena_scale2";
@@ -21,6 +21,7 @@ map_pairs = [
     "da2", "ht_mansion2b_scale2";
     "da2", "ht_0_hightown_scale2";
     "dao", "hrt201n_scale2";
+    "random", "random512-10-1_scale2";
     "room", "32room_000_scale2";
     "room", "16room_000_scale2";
     ];
@@ -57,23 +58,24 @@ for m = 1:height(map_pairs)
         T_nsecs{m, a} = mean(avg_nsecs, 2);
     end
 end
-map_pairs = map_pairs(:, 1) + "/" + map_pairs(:, 2);
-T_nsecs = cell2table(T_nsecs, "RowNames", map_pairs, "VariableNames", algs);
-T_costs = cell2table(T_costs, "RowNames", map_pairs, "VariableNames", "costs");
-T_points = cell2table(T_points, "RowNames", map_pairs, "VariableNames", "points");
+row_names = extractBefore(map_pairs(:, 1) + "/" + map_pairs(:, 2), "_scale2");
+
+T_nsecs = cell2table(T_nsecs, "RowNames", row_names, "VariableNames", algs);
+T_costs = cell2table(T_costs, "RowNames", row_names, "VariableNames", "costs");
+T_points = cell2table(T_points, "RowNames", row_names, "VariableNames", "points");
 save(fullfile(script_dir, "results.mat"), "T_nsecs", "T_costs", "T_points");
 
 %% import RSP files
 RSP_nsecs = cell(height(map_pairs), 1);
 for m = 1:height(map_pairs)
-
+    name = extractBefore(map_pairs(m, 2), "_scale2");
     avg_nsecs = [];
-    for i = (expt_nums + 1)
-        t = readtable(fullfile("results", map_pairs(m) + "_" + num2str(i) + ".txt"));
+    for i = (expt_nums + 1) % started from 1
+        t = readtable(fullfile("..", "rayscan", "results", map_pairs(m,1), name + "_" + num2str(i) + ".txt"));
         avg_nsecs = [avg_nsecs, t.searchNs];
     end
     RSP_nsecs{m} = mean(avg_nsecs, 2);
-    disp("Tabulated Rsp " + map_pairs(m));
+    disp("Tabulated Rsp " + name);
 end
 
 T_nsecs.("RSP") = RSP_nsecs;
@@ -127,11 +129,19 @@ SU = cell2table(SU, "RowNames", T_nsecs.Properties.RowNames, ...
     "VariableNames", ["unique_points", "R2E_ANYA", "R2_ANYA", "R2E_RSP", "R2_RSP"]);
 save(fullfile(script_dir, "results.mat"), "T", "T_nsecs", "T_costs", "T_points", "SU");
 %% plot
-map_pairs = ["room", "32room_000";
-    "da2", "ht_mansion2b";
-    "bg512", "AR0014SR";
-    "street", "NewYork_0_1024";
-    "street", "Shanghai_2_1024"
+clear all; close all; clc
+script_path = matlab.desktop.editor.getActiveFilename;
+[script_dir, ~, ~] = fileparts(script_path);
+addpath(script_dir);
+load(fullfile(script_dir, "results.mat"));
+
+map_pairs = [
+    "random", "random512-10-1"
+%     "room", "32room_000";
+%     "da2", "ht_mansion2b";
+%     "bg512", "AR0014SR";
+%     "street", "NewYork_0_1024";
+%     "street", "Shanghai_2_1024"
     ];
 figure (1)
 set(gcf, 'Position',  [100, 100, 1115, 140*numel(map_pairs)]);
@@ -163,10 +173,10 @@ for m = 1:height(map_pairs)
 
     plot(unique_points, SU_R2E_RSP{:}, 'x-');
     hold on
-    plot(unique_points, SU_R2_RSP{:}, 's-');
+    plot(unique_points, SU_R2_RSP{:}, 's--');
     plot(unique_points, SU_R2E_ANYA{:}, '.-');
-    plot(unique_points, SU_R2_ANYA{:}, 'o-');
-    yline(1, '--');
+    plot(unique_points, SU_R2_ANYA{:}, 'o--');
+    yline(1, ':');
     legend(["R2E vs RayScan+", "R2 vs RayScan+", "R2E vs ANYA", "R2 vs ANYA"], 'Location', 'north' );
     ylim([0, inf])
     grid on
@@ -179,8 +189,10 @@ for m = 1:height(map_pairs)
 
     nexttile([1, 3])
     points = T_points{row_name, "points"};
+    points = points{:};
     costs = T_costs{row_name, "costs"};
-    plot(points{:}, costs{:}, '.');
+    costs = costs{:};
+    plot(points, costs, '.');
     grid on
     hold off
     if m == 1
@@ -188,6 +200,8 @@ for m = 1:height(map_pairs)
     elseif m == height(map_pairs)
         xlabel("Turning Points");
     end
+    r = corrcoef(points, costs);
+    legend(["Correlation Coefficient = " + num2str(r(1, 2))], 'Location', 'southeast');
 end
 
 exportgraphics(TL,'results.pdf','BackgroundColor','none','ContentType','vector');

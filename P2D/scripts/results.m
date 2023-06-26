@@ -158,11 +158,11 @@ map_pairs = [
     ];
 figure (1)
 set(gcf, 'Position',  [100, 100, 1115, 140*numel(map_pairs)]);
-TL = tiledlayout(height(map_pairs), 7,'TileSpacing','Compact','Padding','None');
+TL = tiledlayout(height(map_pairs), 8,'TileSpacing','Compact','Padding','None');
 
 for m = 1:height(map_pairs)
     map_name = map_pairs(m, 2);
-    nexttile
+    nexttile([1, 2])
     [M, I, C] = parse_maps(fullfile("data", map_pairs(m, 1)), map_name, false);
     ih = imagesc(I, "XData", 0.5, "YData", 0.5);
     ylabel(map_name, 'Interpreter','none')
@@ -215,10 +215,10 @@ for m = 1:height(map_pairs)
     end
     r = corrcoef(points, costs);
     
-    legend_str = sprintf("Correlation Coefficient = %f\nNum. Free-cells : Num Cells = %d/%d = %f%%\nNum. Corners : Num. Free-cells = %d/%d = %f%%", ...
+    legend_str = sprintf("Correlation Coefficient = %.3f\nNum. Free-cells : Total Cells = %d : %d = %.1f%%\nNum. Corners : Num. Free-cells = %d : %d = %.1f%%", ...
         r(1, 2), ...
         sum(M.mp == 0), numel(M.mp), sum(M.mp == 0) / numel(M.mp) * 100, ...
-        height(C), sum(M.mp == 0), height(C) / sum(M.mp == 0) * 100);
+        height(C) - 4, sum(M.mp == 0), (height(C) - 4) / sum(M.mp == 0) * 100);
     legend([legend_str], 'Location', 'southeast');
 end
 

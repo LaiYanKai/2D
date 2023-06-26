@@ -1,7 +1,7 @@
 %% Import and collate results, and save them
 clear all; clc; close all
 
-algs = ["R2E", "R2", "ANYA"]; % make sure the first alg returns the optimal path, and the optimal path does not contain more than 3 consecutive colinear points anywhere
+algs = ["R2E", "R2"]; % make sure the first alg returns the optimal path, and the optimal path does not contain more than 3 consecutive colinear points anywhere
 expt_nums = 0:9;
 map_pairs = [
     "dao", "arena_scale2";
@@ -65,6 +65,19 @@ T_costs = cell2table(T_costs, "RowNames", row_names, "VariableNames", "costs");
 T_points = cell2table(T_points, "RowNames", row_names, "VariableNames", "points");
 save(fullfile(script_dir, "results.mat"), "T_nsecs", "T_costs", "T_points");
 
+%% import ANYA files
+t_nsecs = cell(height(map_pairs), 1);
+for m = 1:height(map_pairs)
+    avg_nsecs = [];
+    for i = 0:0
+        t = readtable(fullfile("results", map_pairs(m, 1), map_pairs(m, 2) + ".ANYA." + num2str(i) + ".results"), "FileType", "text");
+        avg_nsecs = [avg_nsecs, t.runt_micro(:) * 1000];
+    end
+    t_nsecs{m} = mean(avg_nsecs, 2);
+    disp(sum(abs(t.realcost(:)- T_costs.costs{:}) > 1e-8)); % compare costs
+    disp(sum(abs(t.realcost(:)- T_costs.costs{:}) > 1e-8));
+end
+T_nsecs.("ANYA") = t_nsecs;
 %% import RSP files
 RSP_nsecs = cell(height(map_pairs), 1);
 for m = 1:height(map_pairs)

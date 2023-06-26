@@ -74,8 +74,8 @@ for m = 1:height(map_pairs)
         avg_nsecs = [avg_nsecs, t.runt_micro(:) * 1000];
     end
     t_nsecs{m} = mean(avg_nsecs, 2);
-    disp(sum(abs(t.realcost(:)- T_costs.costs{:}) > 1e-8)); % compare costs
-    disp(sum(abs(t.realcost(:)- T_costs.costs{:}) > 1e-8));
+    fprintf("%s Number of ANYA.realcost discrepancies: %d\n", map_pairs(m, 2), sum(abs(t.realcost - T_costs.costs{m}) > 1e-8)); % compare costs
+    fprintf("%s Number of ANYA.gridcost discrepancies: %d\n", map_pairs(m, 2), sum(abs(t.gridcost - T_costs.costs{m}) > 1e-8));
 end
 T_nsecs.("ANYA") = t_nsecs;
 %% import RSP files
@@ -84,7 +84,7 @@ for m = 1:height(map_pairs)
     name = extractBefore(map_pairs(m, 2), "_scale2");
     avg_nsecs = [];
     for i = (expt_nums + 1) % started from 1
-        t = readtable(fullfile("..", "rayscan", "results", map_pairs(m,1), name + "_" + num2str(i) + ".txt"));
+        t = readtable(fullfile("..", "rayscan", "results", map_pairs(m,1), name + "_" + num2str(i) + ".txt"), "FileType", "text");
         avg_nsecs = [avg_nsecs, t.searchNs];
     end
     RSP_nsecs{m} = mean(avg_nsecs, 2);
@@ -119,7 +119,7 @@ for m = 1:height(T)
         idx = (points == unique_points(i));
         nsecs_R2 = T_nsecs.R2{m};
         nsecs_R2E = T_nsecs.R2E{m};
-        nsecs_ANYA = T_nsecs.ANYA2B{m};
+        nsecs_ANYA = T_nsecs.ANYA{m};
         nsecs_RSP = T_nsecs.RSP{m};
         SU_R2E_ANYA(i) = mean(nsecs_ANYA(idx) ./ nsecs_R2E(idx));
         SU_R2_ANYA(i) = mean(nsecs_ANYA(idx) ./ nsecs_R2(idx));
@@ -150,11 +150,11 @@ load(fullfile(script_dir, "results.mat"));
 
 map_pairs = [
     "random", "random512-10-1"
-%     "room", "32room_000";
-%     "da2", "ht_mansion2b";
-%     "bg512", "AR0014SR";
-%     "street", "NewYork_0_1024";
-%     "street", "Shanghai_2_1024"
+    "room", "32room_000";
+    "da2", "ht_mansion2b";
+    "bg512", "AR0014SR";
+    "street", "NewYork_0_1024";
+    "street", "Shanghai_2_1024"
     ];
 figure (1)
 set(gcf, 'Position',  [100, 100, 1115, 140*numel(map_pairs)]);
@@ -163,10 +163,10 @@ TL = tiledlayout(height(map_pairs), 7,'TileSpacing','Compact','Padding','None');
 for m = 1:height(map_pairs)
     map_name = map_pairs(m, 2);
     nexttile
-    [M, C] = parse_maps(fullfile("data", map_pairs(m, 1)), map_name, false);
-    ih = imagesc(C, "XData", 0.5, "YData", 0.5);
+    [M, I, C] = parse_maps(fullfile("data", map_pairs(m, 1)), map_name, false);
+    ih = imagesc(I, "XData", 0.5, "YData", 0.5);
     ylabel(map_name, 'Interpreter','none')
-    h1 = text(-0.1*M.num_i, M.num_j/2, map_name, 'Interpreter', 'none', 'HorizontalAlignment', 'center');
+    h1 = text(-0.1*M.num_i, M.num_j/2, map_name + "(x2)", 'Interpreter', 'none', 'HorizontalAlignment', 'center');
     set(h1, 'rotation', 90)
     grid off
     axis off
@@ -184,14 +184,14 @@ for m = 1:height(map_pairs)
     unique_points = SU{row_name, "unique_points"};
     unique_points = unique_points{:};
 
-    plot(unique_points, SU_R2E_RSP{:}, 'x-');
+    semilogy(unique_points, SU_R2E_RSP{:}, 'x-');
     hold on
-    plot(unique_points, SU_R2_RSP{:}, 's--');
-    plot(unique_points, SU_R2E_ANYA{:}, '.-');
-    plot(unique_points, SU_R2_ANYA{:}, 'o--');
+    semilogy(unique_points, SU_R2_RSP{:}, 's--');
+    semilogy(unique_points, SU_R2E_ANYA{:}, '.-');
+    semilogy(unique_points, SU_R2_ANYA{:}, 'o--');
     yline(1, ':');
     legend(["R2E vs RayScan+", "R2 vs RayScan+", "R2E vs ANYA", "R2 vs ANYA"], 'Location', 'north' );
-    ylim([0, inf])
+    ylim([0.1, inf])
     grid on
     if m == 1
         title("Mean Speed Ups")
@@ -209,12 +209,17 @@ for m = 1:height(map_pairs)
     grid on
     hold off
     if m == 1
-        title("Path Cost (Num. Cells)")
+        title("Path Cost")
     elseif m == height(map_pairs)
         xlabel("Turning Points");
     end
     r = corrcoef(points, costs);
-    legend(["Correlation Coefficient = " + num2str(r(1, 2))], 'Location', 'southeast');
+    
+    legend_str = sprintf("Correlation Coefficient = %f\nNum. Free-cells : Num Cells = %d/%d = %f%%\nNum. Corners : Num. Free-cells = %d/%d = %f%%", ...
+        r(1, 2), ...
+        sum(M.mp == 0), numel(M.mp), sum(M.mp == 0) / numel(M.mp) * 100, ...
+        height(C), sum(M.mp == 0), height(C) / sum(M.mp == 0) * 100);
+    legend([legend_str], 'Location', 'southeast');
 end
 
 exportgraphics(TL,'results.pdf','BackgroundColor','none','ContentType','vector');

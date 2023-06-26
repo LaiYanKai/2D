@@ -9,7 +9,7 @@ FILE="build/Release/run/run_exe"
 # ./$FILE "$@" 
 
 # ================ Store all the different results we want to compare ======================
-./$FILE --algs R2E --ids -1 --num_expts 2 --names \
+./$FILE --algs R2 --ids -1 --num_expts 2 --names \
     random/random512-10-1_scale2
     # dao/arena_scale2 \
     # dao/hrt201n_scale2 \

@@ -2,15 +2,16 @@
 clear all; close all; clc
 
 algo = "VG2B";
-scen = 1823;
+scen = 0;
 
 % map_pair = ["dao", "arena"];
-map_pair = ["dao", "hrt201n"];
+% map_pair = ["dao", "hrt201n"];
 % map_pair = ["sc1", "Aftershock"];
 % map_pair = ["sc1", "Aurora"];
-map_pair = ["sc1", "ArcticStation"];
+% map_pair = ["sc1", "ArcticStation"];
 % map_pair = ["da2", "lt_0_lowtown_a3_n_c"];
 % map_pair = ["room", "16room_000"];
+map_pair = ["random", "random512-10-1_scale2"];
 % get paths
 script_path = matlab.desktop.editor.getActiveFilename;
 [script_dir, ~, ~] = fileparts(script_path);
@@ -20,7 +21,7 @@ results_dir = fullfile(script_dir, "..", "..", "results", map_pair(1));
 addpath(script_dir);
 
 % display map
-parse_maps(data_dir, name, true);
+[M, I, C] = parse_maps(data_dir, name, true);
 
 % get scenario
 S = get_scenario(results_dir, name, algo, scen);

@@ -1,6 +1,7 @@
 
-function [M, C] = parse_maps(directory, name, display)
+function [M, I, C] = parse_maps(directory, name, display)
 M = [];
+I = [];
 C = [];
 % extract mp data
 fname = fullfile(directory, name + ".map");
@@ -33,13 +34,15 @@ mp = reshape(mp', 1, []);
 M = struct('num_i', ni, 'num_j', nj, 'name', '', 'path', fname, 'mp', mp);
 [~, M.name, ~] = fileparts(fname);
 
-C = ~logical(reshape(M.mp, M.num_j, M.num_i));
-C = double(C);
+I = ~logical(reshape(M.mp, M.num_j, M.num_i));
+I = double(I);
 
+[X,Y] = findCorners(M);
+C = [X', Y'];
 if ~display
     return
 end
-imagesc(C, "XData", 0.5, "YData", 0.5);
+imagesc(I, "XData", 0.5, "YData", 0.5);
 set(gca,'YDir','normal')
 hold on
 rectangle('Position',[0 0 M.num_i M.num_j], 'Edgecolor', 'r')
@@ -59,7 +62,6 @@ axis equal
 % for data tips
 hold on
 % cpath = fullfile("P2D", "scripts", "corners", strcat(map_pair(2), ".mat"));
-[X,Y] = findCorners(M);
 % save(cpath, 'X', 'Y');
 % load(cpath, 'X', 'Y');
 sh = scatter(X, Y);

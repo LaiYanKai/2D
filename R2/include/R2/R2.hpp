@@ -15,6 +15,7 @@
 #include <list>
 #include <assert.h>
 #include <iterator>
+#include <chrono>
 
 #pragma once
 namespace P2D::R2
@@ -218,6 +219,11 @@ namespace P2D::R2
                 return path;
             }
 
+            // ------ setup timeout for R2 ------------
+            std::chrono::system_clock::time_point time_start;
+            if (R2E == false)
+                time_start = std::chrono::system_clock::now();
+
             initialiseMinimal(start_coord, goal_coord);
             if (isCheckerboardNonconvex(crn_start))
             {
@@ -232,6 +238,19 @@ namespace P2D::R2
             {
                 while (1)
                 {
+                    // ------ check timeout for R2 ------------
+                    if (R2E == false)
+                    {
+                        std::chrono::system_clock::time_point time_end = std::chrono::system_clock::now();
+                        std::chrono::duration<float> dur = time_end - time_start;
+                        if (dur.count() >= 5)
+                        {
+                            std::cout << "5s TIMEOUT!" << std::endl;
+                            _dbg11("TIMEOUT! Run took longer than 5 seconds.");
+                            break;
+                        }
+                    }
+
                     Query *q = open_list.poll();
                     if (q == nullptr)
                         break; // no more queries

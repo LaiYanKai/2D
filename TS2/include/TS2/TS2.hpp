@@ -39,8 +39,23 @@ namespace P2D::TS2
             open_list.queue(node);
 
             std::vector<V2> path = {};
+            int num_iter = 0;
+            std::chrono::system_clock::time_point time_start = std::chrono::system_clock::now();
             while (true)
             {
+                if (++num_iter > 20)
+                {
+                    num_iter = 0;
+                    std::chrono::system_clock::time_point time_end = std::chrono::system_clock::now();
+                    std::chrono::duration<float> dur = time_end - time_start;
+                    if (dur.count() >= 5)
+                    {
+                        std::cout << "5s TIMEOUT!" << std::endl;
+                        _dbg11("TIMEOUT! Run took longer than 5 seconds.");
+                        break;
+                    }
+                }
+
                 // ====== Poll Node ======
                 node = open_list.poll();
 

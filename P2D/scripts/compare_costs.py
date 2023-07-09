@@ -32,17 +32,27 @@ def main():
         type=pathlib.Path,
     )
     parser.add_argument(
-        "--name",
+        "--dir",
+        "-d",
+        help="Directory containing result file(s). All result files in the directory are named like '[dir/][sub_dir/]stem.alg.results', and this accepts '[sub_dir/]stem'. Used with --names and --algs",
+        nargs="?",
+        default="results",
+        type=pathlib.Path
+    )
+    parser.add_argument(
+        "--names",
         "-n",
-        help="Directory and name containing the compared files. All result files in the directory are named like '<dir>/<name>.<alg>.results', and this accepts '<dir>/<name>'. Can be specified multiple times to compare different maps and scenarios. Used with --algs",
+        help="Name of files, including sub_dir if any. All result files in the directory are named like '[dir/][sub_dir/]stem.alg.results', and this accepts '[sub_dir/]stem'. Can be specified multiple times to show files. Used with --algs and --dir",
         nargs="*",
-        type=pathlib.Path,
+        default=[],
+        type=str,
     )
     parser.add_argument(
         "--algs",
         "-a",
-        help="Algorithms of the compared files. The first algorithm is the oracle file. At least two algorithms must be compared. All result files in the directory are named like '<name>.<alg>.results'. Used with --name",
+        help="Results for files from an algorithm. All result files in the directory are named like '[dir/][sub_dir/]stem.alg.results', and this argument accepts 'alg'. 'alg' can be attached with a suffix like 'R2.0'. Used with --dir and --names",
         nargs="*",
+        default=[],
         type=str,
     )
     parser.add_argument(
@@ -57,14 +67,14 @@ def main():
     wrong = False
     parameter_type = True
     if not args.oracle and not args.others:
-        if not args.name:
+        if not args.names:
             wrong = True
             print(f"--name must be specified")
         if not args.algs or len(args.algs) < 2:
             wrong = True
             print(f"--algs must be specified with at least two options")
         parameter_type = False
-    elif not args.name and not args.algs:
+    elif not args.names and not args.algs:
         if not args.oracle:
             wrong = True
             print(f"--oracle must be specified")
@@ -96,12 +106,17 @@ def main():
         filepath.other_filepaths = [args.others]
         all_paths.append(filepath)
     else:
-        for name in args.name:
+        for name in args.names:
             filepath = FilePaths()
-            filepath.oracle_filepath = pathlib.Path(str(name) + "." + args.algs[0] + ".results")
+            filepath.oracle_filepath = pathlib.Path(name + "." + args.algs[0] + ".results")
+            if args.dir is not None:
+                filepath.oracle_filepath = args.dir / filepath.oracle_filepath
             filepath.other_filepaths = []
             for i in range(1, len(args.algs)):
-                filepath.other_filepaths.append( pathlib.Path(str(name) + "." + args.algs[i] + ".results"))
+                path = pathlib.Path(name + "." + args.algs[i] + ".results")
+                if args.dir is not None:
+                    path = args.dir / path
+                filepath.other_filepaths.append(path)
             all_paths.append(filepath)
 
     # ==================== BUILD ORACLE FILE ======================
@@ -111,10 +126,10 @@ def main():
 
         print(f"Reading Oracle File: '{oracle_filepath}'")
         if oracle_filepath.is_dir():
-            print(f"'{oracle_filepath}' is a directory. No comparisons are done for this file.")
+            print(f"[WARN] '{oracle_filepath}' is a directory. No comparisons are done for this file.")
             continue
         elif not oracle_filepath.exists():
-            print(f"'{oracle_filepath}' does not exist. No comparisons are done for this file.")
+            print(f"[WARN]' {oracle_filepath}' does not exist. No comparisons are done for this file.")
             continue
 
         oracle_scens = []
@@ -129,7 +144,7 @@ def main():
 
         if num_scens == 0:
             print(
-                f"Oracle file '{oracle_filepath}' has no scenarios. No comparisons are done for this file."
+                f"[WARN] Oracle file '{oracle_filepath}' has no scenarios. No comparisons are done for this file."
             )
             continue
 
@@ -140,19 +155,19 @@ def main():
             print(f"Reading Other File: '{other_filepath}'")
             if other_filepath.is_dir():
                 print(
-                    f"'{other_filepath}' is a directory. No comparisons are done for this file."
+                    f"[WARN] '{other_filepath}' is a directory. No comparisons are done for this file."
                 )
                 continue
             elif not other_filepath.exists():
                 print(
-                    f"'{other_filepath}' does not exist. No comparisons are done for this file."
+                    f"[WARN] '{other_filepath}' does not exist. No comparisons are done for this file."
                 )
                 continue
             with open(other_filepath, "r") as other_file:
                 lines = other_file.read().splitlines()
                 if num_scens != len(oracle_scens):
                     print(
-                        f"'{other_filepath}' has {num_scens} scenarios but oracle_file has {len(oracle_scens)}. Skip '{other_filepath}'"
+                        f"[WARN] '{other_filepath}' has {num_scens} scenarios but oracle_file has {len(oracle_scens)}. Skip '{other_filepath}'"
                     )
                 else:
                     num_files_compared += 1

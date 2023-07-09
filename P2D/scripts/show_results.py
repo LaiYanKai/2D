@@ -12,8 +12,8 @@ def main():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
-        "--scenarios",
-        "-s",
+        "--ids",
+        "-i",
         help="-1 for all scenarios, otherwise specify the scenario to print. Can be specified multiple times",
         type=int,
         nargs="*",
@@ -83,16 +83,16 @@ def main():
 
     # ==================== CHECK IF ALL SCENS OR JUST SOME ==============================
     all_scens = False
-    if isinstance(args.scenarios, list):
-        args.scenarios.sort()
-        all_scens = args.scenarios[0] < 0
+    if isinstance(args.ids, list):
+        args.ids.sort()
+        all_scens = args.ids[0] < 0
     else:
-        all_scens = args.scenarios < 0
+        all_scens = args.ids < 0
 
     if all_scens:
-        print(f"Showing results for all scenarios")
+        print(f"Showing results for all ids")
     else:
-        scens_str = ", ".join(map(str, args.scenarios))
+        scens_str = ", ".join(map(str, args.ids))
         print(f"Showing results for scenario(s): {scens_str}")
 
     # ==================== OPEN FILES ==============================
@@ -110,9 +110,9 @@ def main():
             print(f"{file_path.stem} has {len(lines)} scenario results")
 
             if all_scens:
-                args.scenarios = range(len(lines))
+                args.ids = range(len(lines))
 
-            for scen_num in args.scenarios:
+            for scen_num in args.ids:
                 if scen_num >= len(lines):
                     print(f"[WARN] Scen id {scen_num} exceeds the total number of scenarios in results file.")
                     continue

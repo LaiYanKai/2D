@@ -7,13 +7,14 @@ cd $WS
 FILE="P2D/scripts/show_results.py"
 chmod +x $FILE
 
-
+# ================ Use this script like the Python script by forwarding all arguments ======================
 # ./$FILE "$@"
 
 # ================ Store all the different results we want to compare ======================
-./$FILE --algs VG2B R2E.0 R2.0 ANYA2B.0 --dir results --print show_results.log --scenarios 0 --names \
-    random/random512-10-1_scale2 \
-    dao/arena_scale2 \
+./$FILE --algs VG2B R2E R2 --dir results --print show_results.log --ids -1 --names \
+    dao/arena \
+    # random/random512-10-1_scale2 \
+    # dao/arena_scale2 \
     # dao/hrt201n \
     # sc1/Aftershock \
     # sc1/Aurora \

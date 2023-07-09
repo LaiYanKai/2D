@@ -11,7 +11,7 @@
 #include "R2/R2.hpp"
 struct Args
 {
-    std::filesystem::path results_dir = "results", map_dir = "data", scen_dir = "data";
+    std::filesystem::path result_dir = "", map_dir = "", scen_dir = "";
     std::vector<std::filesystem::path> names, algs;
     std::vector<int> ids;
     int num_expts = 1;
@@ -21,7 +21,7 @@ inline bool isOption(const std::string &test) { return test.size() > 2 && test.s
 
 bool isValidOption(const std::string &option)
 {
-    return (option == "--num_expts" || option == "--results_dir" || option == "--map_dir" || option == "--scen_dir" || option == "--names" || option == "--algs" || option == "--ids");
+    return (option == "--num_expts" || option == "--result_dir" || option == "--map_dir" || option == "--scen_dir" || option == "--names" || option == "--algs" || option == "--ids");
 }
 void parseOption(Args &args, const std::string &option, int &arg_idx, const int &argc, char **&argv)
 {
@@ -51,9 +51,9 @@ void parseOption(Args &args, const std::string &option, int &arg_idx, const int 
             if (args.num_expts <= 0)
                 throw std::out_of_range("--num_expts must be at least 1");
         }
-        else if (option == "--results_dir")
+        else if (option == "--result_dir")
         {
-            args.results_dir = arg;
+            args.result_dir = arg;
             specified = true;
         }
         else if (option == "--map_dir")
@@ -152,7 +152,7 @@ int main(int argc, char *argv[])
                 scens.fp_scen = fpath[1];
                 scens.fp_name = fpath[2];
                 scens.fp_alg = alg;
-                scens.fp_results = args.results_dir / scens.fp_name;
+                scens.fp_results = args.result_dir / scens.fp_name;
                 scens.fp_results.replace_extension(alg.string() + suffix_expt_num + ".results");
                 P2D::getScenarios(scens);
 

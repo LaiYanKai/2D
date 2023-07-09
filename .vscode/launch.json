@@ -1,11 +1,8 @@
 {
     "configurations": [
-        // {"name": "DebugRun", "args": ["--algs", "R2E", "--ids", "1823", "--names",
-        //         // "dao/arena",
+        // {"name": "DebugRun", "args": ["--algs", "VG2B", "R2E", "--ids", "-1", "--num_expts", "1", "--result_dir", "results", "--map_dir", "data", "--scen_dir", "data", "--names",
+        //         "dao/arena",
         //         // "dao/hrt201n",
-        //         // "sc1/Aftershock",
-        //         // "sc1/Aurora",
-        //         "sc1/ArcticStation",
         //         // "da2/ht_mansion2b",
         //         // "da2/ht_0_hightown",
         //         // "da2/lt_0_lowtown_a3_n_c",
@@ -26,14 +23,11 @@
         //         // "street/Sydney_1_1024",
             // ], "type": "cppdbg", "request": "launch", "cwd": "${workspaceRoot}", "program": "${workspaceRoot}/build/Debug/run/run_exe", "preLaunchTask": "BuildDebug", "setupCommands": [{ "description": "Enable pretty-printing for gdb", "text": "-enable-pretty-printing", "ignoreFailures": true}]},
         
-        
-        { "name": "ReleaseRun", "args": ["--algs", "R2", "--ids", "-1", "--num_expts", "10", "--names",
-                "random/random512-10-1_scale2",
+        { "name": "ReleaseRun", "args": ["--algs", "VG2B", "R2", "R2E", "--ids", "-1", "--num_expts", "1", "--result_dir", "results", "--map_dir", "data", "--scen_dir", "data", "--names",
+                "dao/arena",
+                // "random/random512-10-1_scale2",
                 // "dao/arena_scale2",
                 // "dao/hrt201n_scale2",
-                // "sc1/Aftershock_scale2",
-                // "sc1/Aurora_scale2",
-                // "sc1/ArcticStation_scale2",
                 // "da2/ht_mansion2b_scale2",
                 // "da2/ht_0_hightown_scale2",
                 // "da2/lt_0_lowtown_a3_n_c_scale2",

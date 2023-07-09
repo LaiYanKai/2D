@@ -30,9 +30,15 @@ while true
     nsecs = [nsecs; line(1)];
     path = line(2:end);
     path = reshape(path, 2, [])';
-    paths = [paths; path];
-    costs = [costs; sum(vecnorm(diff(path),2, 2))];
-    points = [points; height(path)];
+    if (isempty(path))
+        paths = [paths; nan];
+        costs = [costs; nan];
+        points = [points; 0];
+    else
+        paths = [paths; path];
+        costs = [costs; sum(vecnorm(diff(path),2, 2))];
+        points = [points; height(path)];
+    end
 end
 ids = [0:(numel(nsecs) - 1)]';
 T = table(ids, paths, nsecs, costs, points);

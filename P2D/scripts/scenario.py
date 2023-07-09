@@ -3,12 +3,6 @@ import argparse
 import pathlib
 import numpy as np
 
-def scenario_num_type(x):
-    x = int(x)
-    if x < 0:
-        raise argparse.ArgumentTypeError("All values provided must be >= 0")
-    return x
-
 THRES = 1e-8
 class Scenario:
     id = 0  # starts from 1

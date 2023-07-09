@@ -2,7 +2,7 @@
 % also gther map characteristics
 clear all; clc; close all
 
-algs = ["R2E", "R2"]; % make sure the first alg returns the optimal path, and the optimal path does not contain more than 3 consecutive colinear points anywhere
+algs = ["R2E", "R2", "TS2B"]; % make sure the first alg returns the optimal path, and the optimal path does not contain more than 3 consecutive colinear points anywhere
 expt_nums = 0:9;
 map_pairs = [
     "dao", "arena_scale2";
@@ -49,23 +49,28 @@ for m = 1:height(map_pairs)
         % and specify the optimal path num turning points and costs
         % assuming all paths found are identical across expts
         avg_nsecs = [];
-        for expt_num = expt_nums
-            t = get_scenarios(results_dir, name, algo, expt_num);
-            avg_nsecs = [avg_nsecs, t.nsec]; % gather all avg_nsecs
-            if ~specified % assumes all algs return the same shortest paths
-                T_points{m} = t.points;
-                T_costs{m} = t.cost;
-                R(m) = corr(t.points, t.cost);
-
-                % open maps
-                [M, I, C] = parse_maps(fullfile("data", map_pairs(m, 1)), name, false);
-                N(m, 1) = numel(M.mp);
-                N(m, 2) = sum(M.mp == 0);
-                N(m, 3) = height(C) - 4;
-                IM{m} = I;
-
-                specified = true;
+        if (algo == "TS2B")
+            t = get_scenarios(results_dir, name, algo, -1);
+            avg_nsecs = t.nsec;
+        else
+            for expt_num = expt_nums
+                t = get_scenarios(results_dir, name, algo, expt_num);
+                avg_nsecs = [avg_nsecs, t.nsec]; % gather all avg_nsecs
             end
+        end
+        if ~specified % assumes all algs return the same shortest paths
+            T_points{m} = t.points;
+            T_costs{m} = t.cost;
+            R(m) = corr(t.points, t.cost);
+
+            % open maps
+            [M, I, C] = parse_maps(fullfile("data", map_pairs(m, 1)), name, false);
+            N(m, 1) = numel(M.mp);
+            N(m, 2) = sum(M.mp == 0);
+            N(m, 3) = height(C) - 4;
+            IM{m} = I;
+
+            specified = true;
         end
         % get average nsecs
         T_nsecs{m, a} = mean(avg_nsecs, 2);
@@ -278,7 +283,7 @@ script_path = matlab.desktop.editor.getActiveFilename;
 addpath(script_dir);
 load(fullfile(script_dir, "results.mat"));
 
-P = [20, 30];
+P = [3, 10];
 
 % print headers
 fprintf("Map");
@@ -313,48 +318,6 @@ for m = 1:height(T)
                 fprintf(" & %.3g", s);
             end
         end
-    end
-    fprintf(" \\\\\n\\hline\n");
-end
-
-%% get results table
-A = [];
-I = [3, 10, 20, 30];
-for m = 1:height(map_pairs)
-    t = alg_tables{m};
-    a = [mean(t.RR2SE), mean(t.RR2S), mean(t.rsp)];
-    unique_tp = unique(t.tp);
-    su_rr2se = t.rsp ./ t.RR2SE;
-    su_rr2s = t.rsp ./ t.RR2S;
-    sutp_rr2se = zeros(numel(unique_tp), 1);
-    sutp_rr2s = zeros(numel(unique_tp), 1);
-    for i = 1:numel(unique_tp)
-        idx = find(t.tp == unique_tp(i));
-        sutp_rr2se(i) = mean(su_rr2se(idx));
-        sutp_rr2s(i) = mean(su_rr2s(idx));
-    end
-    for i = I
-        tmp = sutp_rr2se(unique_tp == i);
-        if (isempty(tmp))
-            a = [a, NaN, NaN];
-        else
-            a = [a, tmp];
-            idx = find(t.tp == i);
-            a = [a, mean(t.cost(idx))];
-        end
-    end
-    A =[A; a];
-end
-fprintf("map & rr2se & rr2s & rsp & %i & cost & %i & cost & %i & cost \\\\\n\\hline\n", I(1), I(2), I(3));
-
-[~, I] = sortrows(A, 4);
-A = A(I, :);
-M = map_pairs(I, :);
-
-for m = 1:height(M)
-    fprintf('%s', M(m, 2));
-    for a = 1:width(A)
-        fprintf(' & %.2f', A(m, a));
     end
     fprintf(" \\\\\n\\hline\n");
 end

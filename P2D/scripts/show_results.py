@@ -14,9 +14,9 @@ def main():
     parser.add_argument(
         "--scenarios",
         help="-1 for all scenarios, otherwise specify the scenario to print. Can be specified multiple times",
-        type=scenario_num_type,
+        type=int,
         nargs="*",
-        default=0,
+        default=-1,
     )
     parser.add_argument(
         "result_file_paths",

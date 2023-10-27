@@ -10,7 +10,7 @@ chmod +x $FILE
 # ./$FILE "$@" 
 
 # # ================ Store all the different results we want to compare ======================
-./$FILE --algs VG2B R2E R2 --dir results --print compare_results.log --names \
+./$FILE --algs VG2B R2 --dir results --print compare_results.log --names \
     dao/arena \
     # random/random512-10-1_scale2 \
     # dao/hrt201n \

@@ -72,10 +72,10 @@ void parseOption(Args &args, const std::string &option, int &arg_idx, const int 
         }
         else if (option == "--algs")
         {
-            if (arg == "VG2B" || arg == "VG2N" || arg == "TS2B" || arg == "TS2N" || arg == "ANYA2B" || arg == "ANYA2N" || arg == "R2" || arg == "R2E")
+            if (arg == "VG2B" || arg == "VG2N" || arg == "TS2B" || arg == "TS2N" || arg == "ANYA2B" || arg == "ANYA2N" || arg == "R2")
                 args.algs.emplace_back(arg);
             else
-                throw std::out_of_range("--algs must be one of the following: VG2B, VG2N, TS2B, TS2N, ANYA2B, ANYA2N, R2, R2E");
+                throw std::out_of_range("--algs must be one of the following: VG2B, VG2N, TS2B, TS2N, ANYA2B, ANYA2N, R2");
         }
         else if (option == "--ids")
         {
@@ -202,13 +202,7 @@ int main(int argc, char *argv[])
                 }
                 else if (alg == "R2")
                 {
-                    P2D::R2::R2 alg(&grid, false);
-                    for (int id : args.ids)
-                        P2D::run(&alg, scens, id);
-                }
-                else if (alg == "R2E")
-                {
-                    P2D::R2::R2 alg(&grid, true);
+                    P2D::R2::R2 alg(&grid);
                     for (int id : args.ids)
                         P2D::run(&alg, scens, id);
                 }

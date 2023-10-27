@@ -118,7 +118,7 @@ namespace P2D::R2
                 if (_tracerPointSrc(ti_src, status) == true)
                 {
                     // =================== Check Encounter  =======================
-                    if (R2E == true && _tracerEncounteredTree(status))
+                    if (_tracerEncounteredTree(status))
                     {            // discovered enc point and all tgts are opt taut.
                         _dbgdec; // 2
                         break;

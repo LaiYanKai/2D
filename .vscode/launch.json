@@ -1,6 +1,6 @@
 {
     "configurations": [
-        // {"name": "DebugRun", "args": ["--algs", "VG2B", "R2E", "--ids", "-1", "--num_expts", "1", "--result_dir", "results", "--map_dir", "data", "--scen_dir", "data", "--names",
+        // {"name": "DebugRun", "args": ["--algs", "VG2B", "R2", "--ids", "-1", "--num_expts", "1", "--result_dir", "results", "--map_dir", "data", "--scen_dir", "data", "--names",
         //         "dao/arena",
         //         // "dao/hrt201n",
         //         // "da2/ht_mansion2b",
@@ -21,9 +21,9 @@
         //         // "street/Shanghai_2_1024",
         //         // "street/Shanghai_0_1024",
         //         // "street/Sydney_1_1024",
-            // ], "type": "cppdbg", "request": "launch", "cwd": "${workspaceRoot}", "program": "${workspaceRoot}/build/Debug/run/run_exe", "preLaunchTask": "BuildDebug", "setupCommands": [{ "description": "Enable pretty-printing for gdb", "text": "-enable-pretty-printing", "ignoreFailures": true}]},
+        //     ], "type": "cppdbg", "request": "launch", "cwd": "${workspaceRoot}", "program": "${workspaceRoot}/build/Debug/run/run_exe", "preLaunchTask": "BuildDebug", "setupCommands": [{ "description": "Enable pretty-printing for gdb", "text": "-enable-pretty-printing", "ignoreFailures": true}]},
         
-        { "name": "ReleaseRun", "args": ["--algs", "VG2B", "R2", "R2E", "--ids", "-1", "--num_expts", "1", "--result_dir", "results", "--map_dir", "data", "--scen_dir", "data", "--names",
+        { "name": "ReleaseRun", "args": ["--algs", "VG2B", "R2", "--ids", "-1", "--num_expts", "1", "--result_dir", "results", "--map_dir", "data", "--scen_dir", "data", "--names",
                 "dao/arena",
                 // "random/random512-10-1_scale2",
                 // "dao/arena_scale2",

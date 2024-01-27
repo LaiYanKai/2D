@@ -6,6 +6,9 @@ Note that the paper have some errors that slipped past the proofing stage:
 * Pg 13, Table 2, caption should be:
   `Average speed ups for 3, 10, 20, and 30 turning points`
 
+Kindly note that an evolved version of R2 has been written, which addresses some issues with the algorithm. The paper would be uploaded to a preprint and linked here.
+The code for the evolved version will be uploaded once the new paper is published.
+
 # 2D Any-angle Path-finding 
 Contains selected any-angle 2D path planners written in C++17 by Lai Yan Kai.
 Can be run from VSCode, and can be built on Ubuntu 20.04 LTS (Native or WSL2) with gcc9 and CMake.

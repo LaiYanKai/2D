@@ -200,8 +200,8 @@ for m = 1:height(map_pairs)
 
 
     nexttile([1, 3])
-    SU_R2_ANYA = SU{row_name, "R2_ANYA"};
-    SU_R2_RSP = SU{row_name, "R2_RSP"};
+    SU_R2_ANYA = SU{row_name, "R2E_ANYA"};
+    SU_R2_RSP = SU{row_name, "R2E_RSP"};
     unique_points = SU{row_name, "unique_points"};
     unique_points = unique_points{:};
 
@@ -237,10 +237,14 @@ for m = 1:height(map_pairs)
     legend_str = sprintf("$r$ = %.3f\n$\\rho$ = %.1f\\%%", ...
         R.Corr(row_name), ...
         N.Corners(row_name) / N.FreeCells(row_name) * 100);
-    text(max(points)*0.95 , max(costs)*0.05, legend_str, 'Interpreter', 'latex', 'VerticalAlignment', 'bottom', 'HorizontalAlignment', 'right');
+    t = text(max(points)*0.95 , max(costs)*0.05, legend_str, ...
+        'Interpreter', 'latex', 'VerticalAlignment', 'bottom', ...
+        'HorizontalAlignment', 'right', 'FontSize', 14);
 %     legend(dummy, [legend_str], 'Location', 'southeast', 'Interpreter', 'latex');
 end
 
+fontsize(gcf, 'default'); 
+fontsize(gcf, 'scale', 1.3);
 exportgraphics(TL,'results.pdf','BackgroundColor','none','ContentType','vector');
 %% get table of average runtimes
 clear all; clc;
